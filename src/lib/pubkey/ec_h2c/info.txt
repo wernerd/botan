@@ -1,0 +1,9 @@
+<defines>
+EC_HASH_TO_CURVE -> 20190113
+</defines>
+
+<requires>
+ec_group
+kdf
+</requires>
+

@@ -1,20 +1,26 @@
 /*
-* (C) 2014,2015 Jack Lloyd
+* (C) 2014,2015,2019 Jack Lloyd
 *
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
 #include "tests.h"
 
-#if defined(BOTAN_HAS_ECDSA)
-   #include <botan/ecdsa.h>
+#if defined(BOTAN_HAS_EC_HASH_TO_CURVE)
+   #include <botan/ec_h2c.h>
+   #include <botan/kdf.h>
+#endif
+
+#if defined(BOTAN_HAS_ECC_GROUP)
+   #include <botan/ec_group.h>
 #endif
 
 namespace Botan_Tests {
 
 namespace {
 
-#if defined(BOTAN_HAS_ECDSA)
+#if defined(BOTAN_HAS_ECC_GROUP)
+
 class ECC_Pointmult_Tests final : public Text_Based_Test
    {
    public:
@@ -52,6 +58,50 @@ class ECC_Pointmult_Tests final : public Text_Based_Test
 BOTAN_REGISTER_TEST("ecc_pointmul", ECC_Pointmult_Tests);
 
 #endif
+
+#if defined(BOTAN_HAS_EC_HASH_TO_CURVE)
+
+class ECC_H2Ct_Tests final : public Text_Based_Test
+   {
+   public:
+      ECC_H2Ct_Tests() : Text_Based_Test("pubkey/ec_h2c.vec", "Group,Hash,Input,Point") {}
+
+      Test::Result run_one_test(const std::string& method, const VarMap& vars) override
+         {
+         Test::Result result("ECC hash to curve " + method);
+
+         const std::string group_id = vars.get_req_str("Group");
+         const std::string hash = vars.get_req_str("Hash");
+         const std::vector<uint8_t> input = vars.get_req_bin("Input");
+         const std::vector<uint8_t> exp_point_bin = vars.get_req_bin("Point");
+
+         Botan::EC_Group group(group_id);
+         const Botan::PointGFp expected = group.OS2ECP(exp_point_bin);
+
+         if(method == "SWU")
+            {
+            std::unique_ptr<Botan::KDF> kdf = Botan::KDF::create(hash);
+            const auto point = Botan::hash_to_curve_swu(group, *kdf, input.data(), input.size());
+
+            printf("%s\n", Botan::hex_encode(point.encode(Botan::PointGFp::COMPRESSED)).c_str());
+            result.confirm("Generated point is on the curve", point.on_the_curve());
+
+            result.test_eq("Affine X", point.get_affine_x(), expected.get_affine_x());
+            result.test_eq("Affine Y", point.get_affine_y(), expected.get_affine_y());
+            }
+         else
+            {
+            throw Test_Error("Unknown h2c method " + method);
+            }
+
+         return result;
+         }
+   };
+
+BOTAN_REGISTER_TEST("ec_h2c", ECC_H2Ct_Tests);
+
+#endif
+
 
 }
 

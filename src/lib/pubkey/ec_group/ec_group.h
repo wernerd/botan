@@ -224,6 +224,14 @@ class BOTAN_PUBLIC_API(2,0) EC_Group final
       */
       BigInt multiply_mod_order(const BigInt& x, const BigInt& y, const BigInt& z) const;
 
+      /*
+      * Return x^3 modulo the order
+      */
+      inline BigInt cube_mod_order(const BigInt& x) const
+         {
+         return multiply_mod_order(x, square_mod_order(x));
+         }
+
       /**
       * Return the cofactor
       * @result the cofactor
