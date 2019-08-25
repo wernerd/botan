@@ -1239,7 +1239,6 @@ class Speed final : public Command
             std::unique_ptr<Timer> h2c_timer = make_timer("Hash to curve " + group_name);
 
             const Botan::EC_Group group(group_name);
-            const auto kdf = Botan::KDF::create("HKDF(SHA-256)");
 
             while(h2c_timer->under(runtime))
                {
@@ -1248,7 +1247,7 @@ class Speed final : public Command
                rng().randomize(input.data(), input.size());
 
                const Botan::PointGFp p = h2c_timer->run([&]() {
-                     return Botan::hash_to_curve_swu(group, *kdf, input.data(), input.size());
+                     return Botan::hash_to_curve_swu(group, "SHA-256", input.data(), input.size());
                   });
 
                BOTAN_ASSERT_NOMSG(p.on_the_curve());

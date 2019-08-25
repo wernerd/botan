@@ -9,25 +9,41 @@
 #include <botan/numthry.h>
 #include <botan/reducer.h>
 #include <botan/ec_group.h>
-#include <botan/kdf.h>
+#include <botan/hkdf.h>
 
 namespace Botan {
 
 namespace {
 
-BigInt hash_to_base(const EC_Group& group, KDF& kdf,
+BigInt hash_to_base(const EC_Group& group,
+                    const std::string& hash_fn,
                     const uint8_t input[], size_t input_len,
-                    uint8_t differentiator = 0)
+                    const uint8_t domain_sep[], size_t domain_sep_len,
+                    uint8_t ctr,
+                    size_t k = 128)
    {
-   const size_t order_bytes = group.get_order_bytes(); // should be larger?
+   std::unique_ptr<MessageAuthenticationCode> hmac = MessageAuthenticationCode::create_or_throw("HMAC(" + hash_fn + ")");
 
-   secure_vector<uint8_t> kdf_output(order_bytes);
+   secure_vector<uint8_t> prk(hmac->output_length());
+   HKDF_Extract hkdf_extract(hmac->clone());
+   const size_t prk_written = hkdf_extract->kdf(
+      prk.data(), prk.size(), input, input_len, domain_sep, domain_sep_len, nullptr, 0);
 
-   // Use differentiator as salt, label is empty
-   kdf.kdf(kdf_output.data(), kdf_output.size(),
-           input, input_len,
-           &differentiator, 1,
-           nullptr, 0);
+   BOTAN_ASSERT_NOMSG(prk_written == prk.size());
+
+   // HKDF-Extract(salt,IKM) -> PRK
+   HKDF_Expand hkdf_expand(hmac->clone());
+   const uint8_t salt[5] = { 'H', '2', 'C', ctr, 0x00 };
+
+   const size_t L = (ec_group.get_p_bits() + k) / 8;
+   secure_vector<uint8_t> kdf_output(L);
+
+   const size_t kdf_output_written =
+      hkdf_expand->kdf(kdf_output.data(), kdf_output.size(),
+                       prk.data(), prk.size(),
+                       &salt[0], sizeof(salt),
+                       nullptr, 0);
+   BOTAN_ASSERT_NOMSG(kdf_output_written == kdf_output.size());
 
    BigInt v(kdf_output.data(), kdf_output.size());
 
@@ -37,8 +53,7 @@ BigInt hash_to_base(const EC_Group& group, KDF& kdf,
 }
 
 PointGFp hash_to_curve_swu(const EC_Group& group,
-                           const HashFunction& hash,
-                           KDF& kdf,
+                           const std::string& hash_fn,
                            const uint8_t input[],
                            size_t input_len)
    {

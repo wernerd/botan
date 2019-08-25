@@ -4,6 +4,7 @@ EC_HASH_TO_CURVE -> 20190113
 
 <requires>
 ec_group
-kdf
+hkdf
+hmac
 </requires>
 

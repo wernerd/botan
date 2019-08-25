@@ -12,7 +12,6 @@
 namespace Botan {
 
 class EC_Group;
-class KDF;
 
 /**
 * Hash an input onto an elliptic curve point using the
@@ -23,9 +22,11 @@ class KDF;
 */
 PointGFp BOTAN_PUBLIC_API(2,10)
    hash_to_curve_swu(const EC_Group& group,
-                     KDF& kdf,
+                     const std::string& hash_fn,
                      const uint8_t input[],
-                     size_t input_len);
+                     size_t input_len,
+                     const uint8_t domain_sep[],
+                     size_t domain_sep_len);
 
 
 }

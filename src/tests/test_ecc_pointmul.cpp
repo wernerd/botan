@@ -80,8 +80,7 @@ class ECC_H2Ct_Tests final : public Text_Based_Test
 
          if(method == "SWU")
             {
-            std::unique_ptr<Botan::KDF> kdf = Botan::KDF::create(hash);
-            const auto point = Botan::hash_to_curve_swu(group, *kdf, input.data(), input.size());
+            const auto point = Botan::hash_to_curve_swu(group, hash, input.data(), input.size());
 
             printf("%s\n", Botan::hex_encode(point.encode(Botan::PointGFp::COMPRESSED)).c_str());
             result.confirm("Generated point is on the curve", point.on_the_curve());
