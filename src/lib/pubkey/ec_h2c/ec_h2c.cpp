@@ -78,16 +78,24 @@ BigInt hash_to_base(const EC_Group& group,
    return BigInt(kdf_output.data(), kdf_output.size());
    }
 
-BigInt compute_sswu_z(const BigInt& p, const BigInt& a, const BigInt& b,
-                      const Modular_Reducer& mod_p)
+BigInt compute_sswu_z(const EC_Group& group, const Modular_Reducer& mod_p)
    {
+   const BigInt& p = group.get_p();
+   const BigInt& a = group.get_a();
+   const BigInt& b = group.get_b();
+
+   const OID oid = group.get_curve_oid();
+
+   // precomputed Z for a few critical curves:
+   if(oid == OID{1,2,840,10045,3,1,7})
+      return p-2;
+   if(oid == OID{1,3,132,0,34})
+      return p-1;
+   if(oid == OID{1,3,132,0,35})
+      return p-2;
+
    BigInt z(1);
    z.flip_sign();
-
-   /*
-   if(p.bits() == 256 || p.bits() == 521)
-      return p+z;
-   */
 
    for(;;)
       {
@@ -131,7 +139,7 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const Modular_Reducer& mod_p, 
    if(A.is_zero() || B.is_zero() || p % 4 == 1)
       throw Invalid_Argument("map_to_curve_sswu does not support this curve");
 
-   const BigInt Z = compute_sswu_z(p, A, B, mod_p);
+   const BigInt Z = compute_sswu_z(group, mod_p);
    const BigInt c1 = mod_p.multiply(p - B, inverse_mod(A, p));
    const BigInt c2 = mod_p.multiply(p - 1, inverse_mod(Z, p));
 
