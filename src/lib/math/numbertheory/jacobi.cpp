@@ -17,14 +17,14 @@ int32_t jacobi(const BigInt& a, const BigInt& n)
    if(n.is_even() || n < 2)
       throw Invalid_Argument("jacobi: second argument must be odd and > 1");
 
-   BigInt x = a % n;
+   BigInt x = a;
    BigInt y = n;
    int32_t J = 1;
 
    while(y > 1)
       {
       x %= y;
-      if(x > y / 2)
+      if(2*x > y)
          {
          x = y - x;
          if(y % 4 == 3)

@@ -14,14 +14,15 @@
 
 namespace Botan {
 
+namespace {
+
 BigInt hash_to_base(const EC_Group& group,
                     const std::string& hash_fn,
                     const uint8_t input[], size_t input_len,
                     const uint8_t domain_sep[], size_t domain_sep_len,
-                    uint8_t ctr,
-                    size_t k)
+                    uint8_t ctr)
    {
-   Modular_Reducer mod_p(group.get_p());
+   const size_t k = 128;
 
 #if 0
    // draft-04:
@@ -47,10 +48,6 @@ BigInt hash_to_base(const EC_Group& group,
                        &salt[0], sizeof(salt),
                        nullptr, 0);
    BOTAN_ASSERT_NOMSG(kdf_output_written == kdf_output.size());
-
-   BigInt v(kdf_output.data(), kdf_output.size());
-
-   return mod_p.reduce(v);
 #else
    // matching the sage code:
 
@@ -66,19 +63,19 @@ BigInt hash_to_base(const EC_Group& group,
    const size_t h_bits = h_bytes * 8;
    const size_t hash_invocations = (group.get_p_bits() + k + h_bits - 1) / h_bits;
 
-   secure_vector<uint8_t> t(hash_invocations * h_bytes);
+   secure_vector<uint8_t> kdf_output(hash_invocations * h_bytes);
    for(size_t i = 0; i != hash_invocations; ++i)
       {
       hash->update(xin);
       hash->update(ctr);
       hash->update(uint8_t(0)); // idx
       hash->update(uint8_t(i)); // jdk
-      hash->final(&t[i * h_bytes]);
+      hash->final(&kdf_output[i * h_bytes]);
       }
-
-   const BigInt v(t);
-   return mod_p.reduce(v);
 #endif
+
+   // not reduced:
+   return BigInt(kdf_output.data(), kdf_output.size());
    }
 
 BigInt compute_sswu_z(const BigInt& p, const BigInt& a, const BigInt& b,
@@ -86,6 +83,11 @@ BigInt compute_sswu_z(const BigInt& p, const BigInt& a, const BigInt& b,
    {
    BigInt z(1);
    z.flip_sign();
+
+   /*
+   if(p.bits() == 256 || p.bits() == 521)
+      return p+z;
+   */
 
    for(;;)
       {
@@ -120,7 +122,7 @@ BigInt ct_choose(bool first, const BigInt& x, const BigInt& y)
    return z;
    }
 
-PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
+PointGFp map_to_curve_sswu(const EC_Group& group, const Modular_Reducer& mod_p, const BigInt& u)
    {
    const BigInt& p = group.get_p();
    const BigInt& A = group.get_a();
@@ -129,8 +131,6 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    if(A.is_zero() || B.is_zero() || p % 4 == 1)
       throw Invalid_Argument("map_to_curve_sswu does not support this curve");
 
-   // These could be precomputed:
-   const Modular_Reducer mod_p(p);
    const BigInt Z = compute_sswu_z(p, A, B, mod_p);
    const BigInt c1 = mod_p.multiply(p - B, inverse_mod(A, p));
    const BigInt c2 = mod_p.multiply(p - 1, inverse_mod(Z, p));
@@ -199,6 +199,7 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    return pt;
    }
 
+}
 PointGFp hash_to_curve_sswu(const EC_Group& group,
                             const std::string& hash_fn,
                             const uint8_t input[],
@@ -206,8 +207,11 @@ PointGFp hash_to_curve_sswu(const EC_Group& group,
                             const uint8_t domain_sep[],
                             size_t domain_sep_len)
    {
+   // These could be precomputed:
+   const Modular_Reducer mod_p(group.get_p());
+
    const BigInt u = hash_to_base(group, hash_fn, input, input_len, domain_sep, domain_sep_len, 0);
-   return map_to_curve_sswu(group, u);
+   return map_to_curve_sswu(group, mod_p, mod_p.reduce(u));
    }
 
 }

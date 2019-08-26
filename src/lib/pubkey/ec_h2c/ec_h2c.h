@@ -30,22 +30,6 @@ PointGFp BOTAN_PUBLIC_API(2,12)
                       const uint8_t domain_sep[],
                       size_t domain_sep_len);
 
-/**
-* Remove this later ...
-*/
-PointGFp BOTAN_TEST_API map_to_curve_sswu(const EC_Group& group, const BigInt& u);
-
-/**
-* Hash to an integer value
-*/
-BigInt BOTAN_TEST_API hash_to_base(const EC_Group& group,
-                                   const std::string& hash_fn,
-                                   const uint8_t input[], size_t input_len,
-                                   const uint8_t domain_sep[], size_t domain_sep_len,
-                                   uint8_t ctr,
-                                   size_t k = 128);
-
-
 }
 
 #endif
