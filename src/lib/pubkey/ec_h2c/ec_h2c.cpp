@@ -12,9 +12,6 @@
 #include <botan/hkdf.h>
 #include <botan/hash.h>
 
-
-#include <botan/hex.h> // for debugging
-
 namespace Botan {
 
 BigInt hash_to_base(const EC_Group& group,
@@ -24,7 +21,7 @@ BigInt hash_to_base(const EC_Group& group,
                     uint8_t ctr,
                     size_t k)
    {
-
+   Modular_Reducer mod_p(group.get_p());
 
 #if 0
    // draft-04:
@@ -53,7 +50,7 @@ BigInt hash_to_base(const EC_Group& group,
 
    BigInt v(kdf_output.data(), kdf_output.size());
 
-   return group.mod_order(v);// wrong!
+   return mod_p.reduce(v);
 #else
    // matching the sage code:
 
@@ -64,7 +61,6 @@ BigInt hash_to_base(const EC_Group& group,
    hash->update_be(uint32_t(input_len));
    hash->update(input, input_len);
    const secure_vector<uint8_t> xin = hash->final();
-   //printf("xin = %s\n", hex_encode(xin).c_str());
 
    const size_t h_bytes = hash->output_length();
    const size_t h_bits = h_bytes * 8;
@@ -80,9 +76,8 @@ BigInt hash_to_base(const EC_Group& group,
       hash->final(&t[i * h_bytes]);
       }
 
-   //printf("t = %s\n", hex_encode(t).c_str());
-   BigInt bn(t);
-   return bn % group.get_p(); // not const time! need group.reduce_mod_p()
+   const BigInt v(t);
+   return mod_p.reduce(v);
 #endif
    }
 
@@ -184,12 +179,14 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    t2 = mod_p.multiply(t1, t2);
    const BigInt gx2 = mod_p.multiply(gx1, t2);
 
+   // assumes p % 4 == 3
    const bool gx1_is_square = (power_mod(gx1, p_m1_over_2, p) <= 1);
 
    const BigInt x = ct_choose(gx1_is_square, x1, x2);
    const BigInt y2 = ct_choose(gx1_is_square, gx1, gx2);
 
-   BigInt y = power_mod(y2, (p + 1)/4, p);
+   // assumes p % 4 == 3
+   const BigInt y = power_mod(y2, (p + 1)/4, p);
 
    PointGFp pt = group.point(x, y);
 
