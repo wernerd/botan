@@ -88,7 +88,7 @@ BigInt hash_to_base(const EC_Group& group,
 
 static void dump(const char* n, const BigInt& v)
    {
-   std::cout << n << " " << std::hex << v << "\n";
+   //std::cout << n << " " << std::hex << v << "\n";
    }
 
 static int32_t sgn0(const BigInt& v, const BigInt& p)
@@ -108,7 +108,12 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    if(A.is_zero() || B.is_zero() || p % 4 == 1)
       throw Invalid_Argument("map_to_curve_sswu does not support this curve");
 
-   const BigInt Z = p - 2; // FIXME depends on curve!!!!!
+   // FIXME depends on curve!!!!!
+   BigInt Z;
+   if(p.bits() == 384)
+      Z = p - 1;
+   else
+      Z = p - 2;
 
    // These could be precomputed:
    const Modular_Reducer mod_p(p);
@@ -167,7 +172,7 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
 
    const BigInt gx1_euler_crit = power_mod(gx1, (p - 1)/2, p);
    const bool gx1_is_square = (gx1_euler_crit <= 1);
-   printf("gx1_is_square %d\n", gx1_is_square);
+   //printf("gx1_is_square %d\n", gx1_is_square);
 
    BigInt x = x2;
    x.ct_cond_assign(gx1_is_square, x1);

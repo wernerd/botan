@@ -87,7 +87,12 @@ class ECC_H2C_Tests final : public Text_Based_Test
                                                          reinterpret_cast<const uint8_t*>(domain.data()),
                                                          domain.size());
 
-            printf("%s\n", Botan::hex_encode(point.encode(Botan::PointGFp::COMPRESSED)).c_str());
+            if(exp_point_bin[0] == 4)
+               {
+               printf("Input = %s\n", Botan::hex_encode(input).c_str());
+               printf("Point = %s\n", Botan::hex_encode(point.encode(Botan::PointGFp::COMPRESSED)).c_str());
+               printf("\n");
+               }
             result.confirm("Generated point is on the curve", point.on_the_curve());
 
             result.test_eq("Affine X", point.get_affine_x(), expected.get_affine_x());
