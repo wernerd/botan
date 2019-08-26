@@ -1247,7 +1247,7 @@ class Speed final : public Command
                rng().randomize(input.data(), input.size());
 
                const Botan::PointGFp p = h2c_timer->run([&]() {
-                     return Botan::hash_to_curve_swu(group, "SHA-256", input.data(), input.size());
+                  return Botan::hash_to_curve_swu(group, "SHA-256", input.data(), input.size(), nullptr, 0);
                   });
 
                BOTAN_ASSERT_NOMSG(p.on_the_curve());

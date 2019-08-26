@@ -26,7 +26,7 @@ BigInt hash_to_base(const EC_Group& group,
 
    secure_vector<uint8_t> prk(hmac->output_length());
    HKDF_Extract hkdf_extract(hmac->clone());
-   const size_t prk_written = hkdf_extract->kdf(
+   const size_t prk_written = hkdf_extract.kdf(
       prk.data(), prk.size(), input, input_len, domain_sep, domain_sep_len, nullptr, 0);
 
    BOTAN_ASSERT_NOMSG(prk_written == prk.size());
@@ -35,11 +35,11 @@ BigInt hash_to_base(const EC_Group& group,
    HKDF_Expand hkdf_expand(hmac->clone());
    const uint8_t salt[5] = { 'H', '2', 'C', ctr, 0x00 };
 
-   const size_t L = (ec_group.get_p_bits() + k) / 8;
+   const size_t L = (group.get_p_bits() + k) / 8;
    secure_vector<uint8_t> kdf_output(L);
 
    const size_t kdf_output_written =
-      hkdf_expand->kdf(kdf_output.data(), kdf_output.size(),
+      hkdf_expand.kdf(kdf_output.data(), kdf_output.size(),
                        prk.data(), prk.size(),
                        &salt[0], sizeof(salt),
                        nullptr, 0);
@@ -55,7 +55,9 @@ BigInt hash_to_base(const EC_Group& group,
 PointGFp hash_to_curve_swu(const EC_Group& group,
                            const std::string& hash_fn,
                            const uint8_t input[],
-                           size_t input_len)
+                           size_t input_len,
+                           const uint8_t domain_sep[],
+                           size_t domain_sep_len)
    {
    const BigInt& p = group.get_p();
    const BigInt& a = group.get_a();
@@ -69,8 +71,8 @@ PointGFp hash_to_curve_swu(const EC_Group& group,
    // This could be precomputed
    const BigInt n_b_over_a = mod_p.multiply(p - b, inverse_mod(a, p));
 
-   const BigInt t = hash_to_base(group, kdf, input, input_len, 0);
-   const BigInt u = hash_to_base(group, kdf, input, input_len, 1);
+   const BigInt t = hash_to_base(group, hash_fn, input, input_len, domain_sep, domain_sep_len, 0);
+   const BigInt u = hash_to_base(group, hash_fn, input, input_len, domain_sep, domain_sep_len, 1);
 
    const BigInt t2 = mod_p.square(t);
    const BigInt t3 = mod_p.multiply(t, t2);
