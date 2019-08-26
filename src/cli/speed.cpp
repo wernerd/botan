@@ -1236,11 +1236,15 @@ class Speed final : public Command
          {
          for(std::string group_name : groups)
             {
-            if(group_name == "secp224r1" || group_name.find("k1") != std::string::npos)
-               continue;
-            std::unique_ptr<Timer> h2c_timer = make_timer("Hash to curve " + group_name);
+            std::unique_ptr<Timer> h2c_timer = make_timer("Hash to curve SSWU " + group_name);
 
             const Botan::EC_Group group(group_name);
+
+            if(group.get_a().is_zero() || group.get_b().is_zero() || group.get_p() % 4 == 1)
+               {
+               error_output() << "Hash to curve SSWU does not support " << group_name << "\n";
+               continue;
+               }
 
             while(h2c_timer->under(runtime))
                {
