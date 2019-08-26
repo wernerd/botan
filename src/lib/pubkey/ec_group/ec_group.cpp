@@ -541,14 +541,15 @@ PointGFp EC_Group::OS2ECP(const uint8_t bits[], size_t len) const
 
 PointGFp EC_Group::point(const BigInt& x, const BigInt& y) const
    {
+   #if 0
    BigInt l = (x*x*x + x*get_a() + get_b()) % get_p();
    BigInt r = (y*y) % get_p();
 
    if(l != r)
       {
-      printf("invalid\n");
-
+      printf("invalid point in EC_Group::point\n");
       }
+#endif
    // TODO: randomize the representation?
    return PointGFp(data().curve(), x, y);
    }

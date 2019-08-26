@@ -55,8 +55,8 @@ BigInt hash_to_base(const EC_Group& group,
 
    return group.mod_order(v);// wrong!
 #else
-
    // matching the sage code:
+
    std::unique_ptr<HashFunction> hash = HashFunction::create_or_throw(hash_fn);
 
    hash->update("h2b");
@@ -86,17 +86,43 @@ BigInt hash_to_base(const EC_Group& group,
 #endif
    }
 
-static void dump(const char* n, const BigInt& v)
+BigInt compute_sswu_z(const BigInt& p, const BigInt& a, const BigInt& b,
+                      const Modular_Reducer& mod_p)
    {
-   //std::cout << n << " " << std::hex << v << "\n";
+   BigInt z(1);
+   z.flip_sign();
+
+   for(;;)
+      {
+      if(jacobi(z, p) == -1)
+         {
+         // t = B / (Z*A)
+         BigInt t = mod_p.multiply(b, inverse_mod(mod_p.multiply(z, a), p));
+         // gt = g(t) = t^3 + a*t + b
+         BigInt gt = mod_p.reduce(mod_p.cube(t) + mod_p.multiply(a,t) + b);
+         if(jacobi(gt, p) == 1)
+            {
+            if(z.is_negative())
+               return p + z;
+            else
+               return z;
+            }
+         }
+
+      // -1, 1, -2, 2, -3, 3 ...
+      bool next = z.is_positive();
+
+      z.flip_sign();
+      if(next)
+         z -= 1;
+      }
    }
 
-static int32_t sgn0(const BigInt& v, const BigInt& p)
+BigInt ct_choose(bool first, const BigInt& x, const BigInt& y)
    {
-   if(v > (p-1)/2)
-      return -1;
-   else
-      return 1;
+   BigInt z = y;
+   z.ct_cond_assign(first, x);
+   return z;
    }
 
 PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
@@ -108,19 +134,13 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    if(A.is_zero() || B.is_zero() || p % 4 == 1)
       throw Invalid_Argument("map_to_curve_sswu does not support this curve");
 
-   // FIXME depends on curve!!!!!
-   BigInt Z;
-   if(p.bits() == 384)
-      Z = p - 1;
-   else
-      Z = p - 2;
-
    // These could be precomputed:
    const Modular_Reducer mod_p(p);
+   const BigInt Z = compute_sswu_z(p, A, B, mod_p);
    const BigInt c1 = mod_p.multiply(p - B, inverse_mod(A, p));
-   dump("MB_OVER_A", c1);
    const BigInt c2 = mod_p.multiply(p - 1, inverse_mod(Z, p));
-   dump("M1_OVER_Z", c2);
+
+   const BigInt p_m1_over_2 = (p-1)/2;
 
    /*
    1.   t1 = Z * u^2
@@ -148,47 +168,35 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    */
 
    BigInt t1 = mod_p.multiply(Z, mod_p.square(u));
-   dump("t1", t1);
    BigInt t2 = mod_p.square(t1);
-   dump("t2", t2);
    BigInt x1 = inverse_mod(t1 + t2, p);
    const bool e1 = x1.is_zero();
    x1 += 1;
    x1.ct_cond_assign(e1, c2);
    x1 = mod_p.multiply(x1, c1);
-   dump("x1", x1);
    BigInt gx1 = mod_p.square(x1);
    gx1 += A;
    gx1 = mod_p.multiply(gx1, x1);
    gx1 += B;
    gx1 = mod_p.reduce(gx1);
-   dump("gx1", gx1);
 
    const BigInt x2 = mod_p.multiply(t1, x1);
-   dump("x2", x2);
    t2 = mod_p.multiply(t1, t2);
    const BigInt gx2 = mod_p.multiply(gx1, t2);
-   dump("gx2", gx2);
 
-   const BigInt gx1_euler_crit = power_mod(gx1, (p - 1)/2, p);
-   const bool gx1_is_square = (gx1_euler_crit <= 1);
-   //printf("gx1_is_square %d\n", gx1_is_square);
+   const bool gx1_is_square = (power_mod(gx1, p_m1_over_2, p) <= 1);
 
-   BigInt x = x2;
-   x.ct_cond_assign(gx1_is_square, x1);
-
-   BigInt y2 = gx2;
-   y2.ct_cond_assign(gx1_is_square, gx1);
+   const BigInt x = ct_choose(gx1_is_square, x1, x2);
+   const BigInt y2 = ct_choose(gx1_is_square, gx1, gx2);
 
    BigInt y = power_mod(y2, (p + 1)/4, p);
-   if(mod_p.square(y) != y2)
-      printf("bad sqrt\n");
-   dump("x", x);
-   dump("y", y);
 
    PointGFp pt = group.point(x, y);
 
-   if(sgn0(u, p) != sgn0(y, p))
+   const int32_t sgn0_u = (u > p_m1_over_2) ? -1 : 1;
+   const int32_t sgn0_y = (y > p_m1_over_2) ? -1 : 1;
+
+   if(sgn0_u != sgn0_y)
       pt.negate();
 
    return pt;

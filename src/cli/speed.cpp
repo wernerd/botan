@@ -1236,6 +1236,8 @@ class Speed final : public Command
          {
          for(std::string group_name : groups)
             {
+            if(group_name == "secp224r1" || group_name.find("k1") != std::string::npos)
+               continue;
             std::unique_ptr<Timer> h2c_timer = make_timer("Hash to curve " + group_name);
 
             const Botan::EC_Group group(group_name);
