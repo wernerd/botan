@@ -10,18 +10,24 @@
 #include <botan/reducer.h>
 #include <botan/ec_group.h>
 #include <botan/hkdf.h>
+#include <botan/hash.h>
+
+
+#include <botan/hex.h> // for debugging
 
 namespace Botan {
-
-namespace {
 
 BigInt hash_to_base(const EC_Group& group,
                     const std::string& hash_fn,
                     const uint8_t input[], size_t input_len,
                     const uint8_t domain_sep[], size_t domain_sep_len,
                     uint8_t ctr,
-                    size_t k = 128)
+                    size_t k)
    {
+
+
+#if 0
+   // draft-04:
    std::unique_ptr<MessageAuthenticationCode> hmac = MessageAuthenticationCode::create_or_throw("HMAC(" + hash_fn + ")");
 
    secure_vector<uint8_t> prk(hmac->output_length());
@@ -47,112 +53,140 @@ BigInt hash_to_base(const EC_Group& group,
 
    BigInt v(kdf_output.data(), kdf_output.size());
 
-   return group.mod_order(v);
+   return group.mod_order(v);// wrong!
+#else
+
+   // matching the sage code:
+   std::unique_ptr<HashFunction> hash = HashFunction::create_or_throw(hash_fn);
+
+   hash->update("h2b");
+   hash->update(domain_sep, domain_sep_len);
+   hash->update_be(uint32_t(input_len));
+   hash->update(input, input_len);
+   const secure_vector<uint8_t> xin = hash->final();
+   //printf("xin = %s\n", hex_encode(xin).c_str());
+
+   const size_t h_bytes = hash->output_length();
+   const size_t h_bits = h_bytes * 8;
+   const size_t hash_invocations = (group.get_p_bits() + k + h_bits - 1) / h_bits;
+
+   secure_vector<uint8_t> t(hash_invocations * h_bytes);
+   for(size_t i = 0; i != hash_invocations; ++i)
+      {
+      hash->update(xin);
+      hash->update(ctr);
+      hash->update(uint8_t(0)); // idx
+      hash->update(uint8_t(i)); // jdk
+      hash->final(&t[i * h_bytes]);
+      }
+
+   //printf("t = %s\n", hex_encode(t).c_str());
+   BigInt bn(t);
+   return bn % group.get_p(); // not const time! need group.reduce_mod_p()
+#endif
    }
 
-}
+static void dump(const char* n, const BigInt& v)
+   {
+   std::cout << n << " " << std::hex << v << "\n";
+   }
 
-PointGFp hash_to_curve_swu(const EC_Group& group,
-                           const std::string& hash_fn,
-                           const uint8_t input[],
-                           size_t input_len,
-                           const uint8_t domain_sep[],
-                           size_t domain_sep_len)
+static int32_t sgn0(const BigInt& v, const BigInt& p)
+   {
+   if(v > (p-1)/2)
+      return -1;
+   else
+      return 1;
+   }
+
+PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    {
    const BigInt& p = group.get_p();
-   const BigInt& a = group.get_a();
-   const BigInt& b = group.get_b();
+   const BigInt& A = group.get_a();
+   const BigInt& B = group.get_b();
 
-   if(a.is_zero() || b.is_zero())
-      throw Invalid_Argument("hash_to_curve_swu does not support this curve");
+   if(A.is_zero() || B.is_zero() || p % 4 == 1)
+      throw Invalid_Argument("map_to_curve_sswu does not support this curve");
 
+   const BigInt Z = p - 2; // FIXME depends on curve!!!!!
+
+   // These could be precomputed:
    const Modular_Reducer mod_p(p);
+   const BigInt c1 = mod_p.multiply(p - B, inverse_mod(A, p));
+   dump("MB_OVER_A", c1);
+   const BigInt c2 = mod_p.multiply(p - 1, inverse_mod(Z, p));
+   dump("M1_OVER_Z", c2);
 
-   // This could be precomputed
-   const BigInt n_b_over_a = mod_p.multiply(p - b, inverse_mod(a, p));
-
-   const BigInt t = hash_to_base(group, hash_fn, input, input_len, domain_sep, domain_sep_len, 0);
-   const BigInt u = hash_to_base(group, hash_fn, input, input_len, domain_sep, domain_sep_len, 1);
-
-   const BigInt t2 = mod_p.square(t);
-   const BigInt t3 = mod_p.multiply(t, t2);
-   const BigInt t4 = mod_p.square(t2);
-   const BigInt t6 = mod_p.square(t3);
-
-   // X1(t,u) = u
-   const BigInt gx1 = mod_p.reduce(mod_p.cube(u) + mod_p.multiply(a, u) + b);
-
-   // x2(t,u) = (-b/a) * (t^6 * g(u)^3 - 1) / (g(u) * (t^6 * g(u)^2 - t^2))
-   // (1 + 1 / (t^4 * g(u)^2 + t^2 * g(u)))
-
-   #if 0
-   const BigInt x2_n = mod_p.reduce(mod_p.multiply(t6, mod_p.cube(gx1)) - 1);
-   const BigInt x2_d = mod_p.multiply(gx1, mod_p.reduce(mod_p.multiply(t6, mod_p.square(gx1)) - t2));
-
-   const BigInt x2 = mod_p.multiply(x2_n, inverse_mod(x2_d, p));
-   #else
-   const BigInt d1 = mod_p.multiply(mod_p.square(gx1), t4);
-   const BigInt d2 = mod_p.multiply(gx1, t2);
-   const BigInt d3 = 1 + inverse_mod(d1 + d2, p);
-
-   const BigInt x2 = mod_p.multiply(d3, n_b_over_a);
-   #endif
-
-   const BigInt gx2 = mod_p.reduce(mod_p.cube(x2) + mod_p.multiply(a, x2) + b);
-
-   // X3(t,u) = t^3 * g(u) * X2(t,u)
-   const BigInt x3 = mod_p.multiply(mod_p.square(gx1), mod_p.multiply(t3, x2));
-
-   const BigInt gx3 = mod_p.reduce(mod_p.cube(x3) + mod_p.multiply(a, x3) + b);
-
-   const BigInt gx1_sqrt = ressol(gx1, group.get_p());
-   const BigInt gx2_sqrt = ressol(gx2, group.get_p());
-   const BigInt gx3_sqrt = ressol(gx3, group.get_p());
-
-   const BigInt check1 = mod_p.square(mod_p.multiply(t3, mod_p.square(gx1), gx2));
-   const BigInt check2 = mod_p.multiply(gx1, gx2, gx3);
-
-   if(check1 != check2)
-      printf("bad check\n");
-   else
-      printf("check ok\n");
-   if(gx1_sqrt < 0 && gx2_sqrt < 0 && gx3_sqrt < 0)
-      {
-      printf("i give up\n");
-      //exit(1);
-      }
-
-   const bool use_gx1 = gx1_sqrt > 0;
-   const bool use_gx2 = gx2_sqrt > 0;
-   const bool use_gx3 = gx3_sqrt > 0;
-
-   BOTAN_ASSERT_NOMSG(use_gx1 || use_gx2 || use_gx3);
-   printf("%d %d %d\n", use_gx1, use_gx2, use_gx3);
-
-   BigInt rx, ry;
-
-   rx.ct_cond_assign(use_gx3, x3);
-   ry.ct_cond_assign(use_gx3, gx3_sqrt);
-
-   rx.ct_cond_assign(use_gx2, x2);
-   ry.ct_cond_assign(use_gx2, gx2_sqrt);
-
-   rx.ct_cond_assign(use_gx1, u);
-   ry.ct_cond_assign(use_gx1, gx1_sqrt);
-
-   return group.point(rx, ry);
    /*
-   if(gx1_sqrt > 0)
-      {
-      return group.point(u, gx1_sqrt);
-      }
-   if(gx2_sqrt > 0)
-      {
-      return group.point(x2, gx2_sqrt);
-      }
-
-   return group.point(x3, gx3_sqrt);
+   1.   t1 = Z * u^2
+   2.   t2 = t1^2
+   3.   x1 = t1 + t2
+   4.   x1 = inv0(x1)
+   5.   e1 = x1 == 0
+   6.   x1 = x1 + 1
+   7.   x1 = CMOV(x1, c2, e1)    // if (t1 + t2) == 0, set x1 = -1 / Z
+   8.   x1 = x1 * c1      // x1 = (-B / A) * (1 + (1 / (Z^2 * u^4 + Z * u^2)))
+   9.  gx1 = x1^2
+   10. gx1 = gx1 + A
+   11. gx1 = gx1 * x1
+   12. gx1 = gx1 + B             // gx1 = g(x1) = x1^3 + A * x1 + B
+   13.  x2 = t1 * x1             // x2 = Z * u^2 * x1
+   14.  t2 = t1 * t2
+   15. gx2 = gx1 * t2            // gx2 = (Z * u^2)^3 * gx1
+   16.  e2 = is_square(gx1)
+   17.   x = CMOV(x2, x1, e2)    // If is_square(gx1), x = x1, else x = x2
+   18.  y2 = CMOV(gx2, gx1, e2)  // If is_square(gx1), y2 = gx1, else y2 = gx2
+   19.   y = sqrt(y2)
+   20.  e3 = sgn0(u) == sgn0(y)  // fix sign of y
+   21.   y = CMOV(-y, y, e3)
+   22. return (x, y)
    */
+
+   BigInt t1 = mod_p.multiply(Z, mod_p.square(u));
+   dump("t1", t1);
+   BigInt t2 = mod_p.square(t1);
+   dump("t2", t2);
+   BigInt x1 = inverse_mod(t1 + t2, p);
+   const bool e1 = x1.is_zero();
+   x1 += 1;
+   x1.ct_cond_assign(e1, c2);
+   x1 = mod_p.multiply(x1, c1);
+   dump("x1", x1);
+   BigInt gx1 = mod_p.square(x1);
+   gx1 += A;
+   gx1 = mod_p.multiply(gx1, x1);
+   gx1 += B;
+   gx1 = mod_p.reduce(gx1);
+   dump("gx1", gx1);
+
+   const BigInt x2 = mod_p.multiply(t1, x1);
+   dump("x2", x2);
+   t2 = mod_p.multiply(t1, t2);
+   const BigInt gx2 = mod_p.multiply(gx1, t2);
+   dump("gx2", gx2);
+
+   const BigInt gx1_euler_crit = power_mod(gx1, (p - 1)/2, p);
+   const bool gx1_is_square = (gx1_euler_crit <= 1);
+   printf("gx1_is_square %d\n", gx1_is_square);
+
+   BigInt x = x2;
+   x.ct_cond_assign(gx1_is_square, x1);
+
+   BigInt y2 = gx2;
+   y2.ct_cond_assign(gx1_is_square, gx1);
+
+   BigInt y = power_mod(y2, (p + 1)/4, p);
+   if(mod_p.square(y) != y2)
+      printf("bad sqrt\n");
+   dump("x", x);
+   dump("y", y);
+
+   PointGFp pt = group.point(x, y);
+
+   if(sgn0(u, p) != sgn0(y, p))
+      pt.negate();
+
+   return pt;
    }
 
 }

@@ -72,15 +72,16 @@ class ECC_H2Ct_Tests final : public Text_Based_Test
 
          const std::string group_id = vars.get_req_str("Group");
          const std::string hash = vars.get_req_str("Hash");
+         const std::string suite = vars.get_req_str("Suite");
          const std::vector<uint8_t> input = vars.get_req_bin("Input");
          const std::vector<uint8_t> exp_point_bin = vars.get_req_bin("Point");
 
          Botan::EC_Group group(group_id);
          const Botan::PointGFp expected = group.OS2ECP(exp_point_bin);
 
-         if(method == "SWU")
+         if(method == "SSWU")
             {
-            const auto point = Botan::hash_to_curve_swu(group, hash, input.data(), input.size(), nullptr, 0);
+            const auto point = Botan::hash_to_curve_sswu(group, hash, input.data(), input.size(), nullptr, 0);
 
             printf("%s\n", Botan::hex_encode(point.encode(Botan::PointGFp::COMPRESSED)).c_str());
             result.confirm("Generated point is on the curve", point.on_the_curve());
