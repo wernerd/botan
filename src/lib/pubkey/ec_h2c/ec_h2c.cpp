@@ -189,4 +189,15 @@ PointGFp map_to_curve_sswu(const EC_Group& group, const BigInt& u)
    return pt;
    }
 
+PointGFp hash_to_curve_sswu(const EC_Group& group,
+                            const std::string& hash_fn,
+                            const uint8_t input[],
+                            size_t input_len,
+                            const uint8_t domain_sep[],
+                            size_t domain_sep_len)
+   {
+   const BigInt u = hash_to_base(group, hash_fn, input, input_len, domain_sep, domain_sep_len, 0);
+   return map_to_curve_sswu(group, u);
+   }
+
 }

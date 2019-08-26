@@ -61,10 +61,12 @@ BOTAN_REGISTER_TEST("ecc_pointmul", ECC_Pointmult_Tests);
 
 #if defined(BOTAN_HAS_EC_HASH_TO_CURVE)
 
-class ECC_H2Ct_Tests final : public Text_Based_Test
+class ECC_H2C_Tests final : public Text_Based_Test
    {
    public:
-      ECC_H2Ct_Tests() : Text_Based_Test("pubkey/ec_h2c.vec", "Group,Hash,Input,Point") {}
+      ECC_H2C_Tests() : Text_Based_Test("pubkey/ec_h2c.vec", "Group,Hash,Domain,Input,Point") {}
+
+      bool clear_between_callbacks() const override { return false; }
 
       Test::Result run_one_test(const std::string& method, const VarMap& vars) override
          {
@@ -72,7 +74,7 @@ class ECC_H2Ct_Tests final : public Text_Based_Test
 
          const std::string group_id = vars.get_req_str("Group");
          const std::string hash = vars.get_req_str("Hash");
-         const std::string suite = vars.get_req_str("Suite");
+         const std::string domain = vars.get_req_str("Domain");
          const std::vector<uint8_t> input = vars.get_req_bin("Input");
          const std::vector<uint8_t> exp_point_bin = vars.get_req_bin("Point");
 
@@ -81,7 +83,9 @@ class ECC_H2Ct_Tests final : public Text_Based_Test
 
          if(method == "SSWU")
             {
-            const auto point = Botan::hash_to_curve_sswu(group, hash, input.data(), input.size(), nullptr, 0);
+            const auto point = Botan::hash_to_curve_sswu(group, hash, input.data(), input.size(),
+                                                         reinterpret_cast<const uint8_t*>(domain.data()),
+                                                         domain.size());
 
             printf("%s\n", Botan::hex_encode(point.encode(Botan::PointGFp::COMPRESSED)).c_str());
             result.confirm("Generated point is on the curve", point.on_the_curve());
@@ -98,7 +102,7 @@ class ECC_H2Ct_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("ec_h2c", ECC_H2Ct_Tests);
+BOTAN_REGISTER_TEST("ec_h2c", ECC_H2C_Tests);
 
 #endif
 
