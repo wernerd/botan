@@ -305,161 +305,162 @@ T aes_S2(T x)
    /*
    Circuit for AES S-box from https://eprint.iacr.org/2011/332.pdf
    */
-#if 0
    // Figure 5:  Top linear transform in forward direction.
-   T1 = U0 + U3
-   T2 = U0 + U5
-   T3 = U0 + U6
-   T4 = U3 + U5
-   T5 = U4 + U6
-   T6 = T1 + T5
-   T7 = U1 + U2
+   const word T1 = x0 ^ x3;
+   const word T2 = x0 ^ x5;
+   const word T3 = x0 ^ x6;
+   const word T4 = x3 ^ x5;
+   const word T5 = x4 ^ x6;
+   const word T6 = T1 ^ T5;
+   const word T7 = x1 ^ x2;
 
-      T8 = U7 + T6
-      T9 = U7 + T7
-      T10 = T6 + T7
-      T11 = U1 + U5
-      T12 = U2 + U5
-      T13 = T3 + T4
-      T14 = T6 + T11
+   const word T8 = x7 ^ T6;
+   const word T9 = x7 ^ T7;
+   const word T10 = T6 ^ T7;
+   const word T11 = x1 ^ x5;
+   const word T12 = x2 ^ x5;
+   const word T13 = T3 ^ T4;
+   const word T14 = T6 ^ T11;
 
-      T15 = T5 + T11
-      T16 = T5 + T12
-      T17 = T9 + T16
-      T18 = U3 + U7
-      T19 = T7 + T18
-      T20 = T1 + T19
-      T21 = U6 + U7
+   const word T15 = T5 ^ T11;
+   const word T16 = T5 ^ T12;
+   const word T17 = T9 ^ T16;
+   const word T18 = x3 ^ x7;
+   const word T19 = T7 ^ T18;
+   const word T20 = T1 ^ T19;
+   const word T21 = x6 ^ x7;
 
-      T22 = T7 + T21
-      T23 = T2 + T22
-      T24 = T2 + T10
-      T25 = T20 + T17
-      T26 = T3 + T16
-      T27 = T1 + T12
+   const word T22 = T7 ^ T21;
+   const word T23 = T2 ^ T22;
+   const word T24 = T2 ^ T10;
+   const word T25 = T20 ^ T17;
+   const word T26 = T3 ^ T16;
+   const word T27 = T1 ^ T12;
+
+   const word D = x7;
 
       // Figure 7:  Shared part of AES S-box circuit 
-      M1 = T13 x T6
-      M2 = T23 x T8
-      M3 = T14 + M1
-      M4 = T19 x D
-      M5 = M4 + M1
-      M6 = T3 x T16
-      M7 = T22 x T9
-      M8 = T26 + M6
-      M9 = T20 x T17
-      M10 = M9 + M6
-      M11 = T1 x T15
-      M12 = T4 x T27
-      M13 = M12 + M11
-      M14 = T2 x T10
-      M15 = M14 + M11
-      M16 = M3 + M2
+   const word M1 = T13 & T6;
+   const word M2 = T23 & T8;
+   const word M3 = T14 ^ M1;
+   const word M4 = T19 & D;
+   const word M5 = M4 ^ M1;
+   const word M6 = T3 & T16;
+   const word M7 = T22 & T9;
+   const word M8 = T26 ^ M6;
+   const word M9 = T20 & T17;
+   const word M10 = M9 ^ M6;
+   const word M11 = T1 & T15;
+   const word M12 = T4 & T27;
+   const word M13 = M12 ^ M11;
+   const word M14 = T2 & T10;
+   const word M15 = M14 ^ M11;
+   const word M16 = M3 ^ M2;
 
-      M17 = M5 + T24
-      M18 = M8 + M7
-      M19 = M10 + M15
-      M20 = M16 + M13
-      M21 = M17 + M15
-      M22 = M18 + M13
-      M23 = M19 + T25
-      M24 = M22 + M23
-      M25 = M22 x M20
-      M26 = M21 + M25
-      M27 = M20 + M21
-      M28 = M23 + M25
-      M29 = M28 x M27
-      M30 = M26 x M24
-      M31 = M20 x M23
-      M32 = M27 x M31
+   const word M17 = M5 ^ T24;
+   const word M18 = M8 ^ M7;
+   const word M19 = M10 ^ M15;
+   const word M20 = M16 ^ M13;
+   const word M21 = M17 ^ M15;
+   const word M22 = M18 ^ M13;
+   const word M23 = M19 ^ T25;
+   const word M24 = M22 ^ M23;
+   const word M25 = M22 & M20;
+   const word M26 = M21 ^ M25;
+   const word M27 = M20 ^ M21;
+   const word M28 = M23 ^ M25;
+   const word M29 = M28 & M27;
+   const word M30 = M26 & M24;
+   const word M31 = M20 & M23;
+   const word M32 = M27 & M31;
 
-      M33 = M27 + M25
-      M34 = M21 x M22
-      M35 = M24 x M34
-      M36 = M24 + M25
-      M37 = M21 + M29
-      M38 = M32 + M33
-      M39 = M23 + M30
-      M40 = M35 + M36
-      M41 = M38 + M40
-      M42 = M37 + M39
-      M43 = M37 + M38
-      M44 = M39 + M40
-      M45 = M42 + M41
-      M46 = M44 x T6
-      M47 = M40 x T8
-      M48 = M39 x D
+   const word M33 = M27 ^ M25;
+   const word M34 = M21 & M22;
+   const word M35 = M24 & M34;
+   const word M36 = M24 ^ M25;
+   const word M37 = M21 ^ M29;
+   const word M38 = M32 ^ M33;
+   const word M39 = M23 ^ M30;
+   const word M40 = M35 ^ M36;
+   const word M41 = M38 ^ M40;
+   const word M42 = M37 ^ M39;
+   const word M43 = M37 ^ M38;
+   const word M44 = M39 ^ M40;
+   const word M45 = M42 ^ M41;
+   const word M46 = M44 & T6;
+   const word M47 = M40 & T8;
+   const word M48 = M39 & D;
 
-      M49 = M43 x T16
-      M50 = M38 x T9
-      M51 = M37 x T17
-      M52 = M42 x T15
-      M53 = M45 x T27
-      M54 = M41 x T10
-      M55 = M44 x T13
-      M56 = M40 x T23
-      M57 = M39 x T19
-      M58 = M43 x T3
-      M59 = M38 x T22
-      M60 = M37 x T20
-      M61 = M42 x T1
-      M62 = M45 x T4
-      M63 = M41 x T2
+   const word M49 = M43 & T16;
+   const word M50 = M38 & T9;
+   const word M51 = M37 & T17;
+   const word M52 = M42 & T15;
+   const word M53 = M45 & T27;
+   const word M54 = M41 & T10;
+   const word M55 = M44 & T13;
+   const word M56 = M40 & T23;
+   const word M57 = M39 & T19;
+   const word M58 = M43 & T3;
+   const word M59 = M38 & T22;
+   const word M60 = M37 & T20;
+   const word M61 = M42 & T1;
+   const word M62 = M45 & T4;
+   const word M63 = M41 & T2;
 
       // Figure 8:  Bottom linear transform in forward direction.
-      L0 = M61 + M62
-      L1 = M50 + M56
-      L2 = M46 + M48
-      L3 = M47 + M55
-      L4 = M54 + M58
-      L5 = M49 + M61
-      L6 = M62 + L5
-      L7 = M46 + L3
-      L8 = M51 + M59
-      L9 = M52 + M53
-      L10 = M53 + L4
-      L11 = M60 + L2
-      L12 = M48 + M51
-      L13 = M50 + L0
-      L14 = M52 + M61
-      L15 = M55 + L1
-      L16 = M56 + L0
-      L17 = M57 + L1
-      L18 = M58 + L8
-      L19 = M63 + L4
+   const word L0 = M61 ^ M62;
+   const word L1 = M50 ^ M56;
+   const word L2 = M46 ^ M48;
+   const word L3 = M47 ^ M55;
+   const word L4 = M54 ^ M58;
+   const word L5 = M49 ^ M61;
+   const word L6 = M62 ^ L5;
+   const word L7 = M46 ^ L3;
+   const word L8 = M51 ^ M59;
+   const word L9 = M52 ^ M53;
+   const word L10 = M53 ^ L4;
+   const word L11 = M60 ^ L2;
+   const word L12 = M48 ^ M51;
+   const word L13 = M50 ^ L0;
+   const word L14 = M52 ^ M61;
+   const word L15 = M55 ^ L1;
+   const word L16 = M56 ^ L0;
+   const word L17 = M57 ^ L1;
+   const word L18 = M58 ^ L8;
+   const word L19 = M63 ^ L4;
 
-      L20 = L0 + L1
-      L21 = L1 + L7
-      L22 = L3 + L12
-      L23 = L18 + L2
-      L24 = L15 + L9
-      L25 = L6 + L10
-      L26 = L7 + L9
-      L27 = L8 + L10
-      L28 = L11 + L14
-      L29 = L11 + L17
+   const word L20 = L0 ^ L1;
+   const word L21 = L1 ^ L7;
+   const word L22 = L3 ^ L12;
+   const word L23 = L18 ^ L2;
+   const word L24 = L15 ^ L9;
+   const word L25 = L6 ^ L10;
+   const word L26 = L7 ^ L9;
+   const word L27 = L8 ^ L10;
+   const word L28 = L11 ^ L14;
+   const word L29 = L11 ^ L17;
 
-      S0 = L6 + L24
-      S1 = L16 # L26
-      S2 = L19 # L28
-      S3 = L6 + L21
-      S4 = L20 + L22
-      S5 = L25 + L29
-      S6 = L13 # L27
-      S7 = L6 # L23
+   const word S0 = L6 ^ L24;
+   const word S1 = ~(L16 ^ L26);
+   const word S2 = ~(L19 ^ L28);
+   const word S3 = L6 ^ L21;
+   const word S4 = L20 ^ L22;
+   const word S5 = L25 ^ L29;
+   const word S6 = ~(L13 ^ L27);
+   const word S7 = ~(L6 ^ L23);
 
    T r = 0;
 
    for(size_t i = 0; i != sizeof(T); i += 1)
       {
-      r = (r << 1) | ((s0 >> i) & 1);
-      r = (r << 1) | ((s1 >> i) & 1);
-      r = (r << 1) | ((s2 >> i) & 1);
-      r = (r << 1) | ((s3 >> i) & 1);
-      r = (r << 1) | ((s4 >> i) & 1);
-      r = (r << 1) | ((s5 >> i) & 1);
-      r = (r << 1) | ((s6 >> i) & 1);
-      r = (r << 1) | ((s7 >> i) & 1);
+      r = (r << 1) | ((S0 >> i) & 1);
+      r = (r << 1) | ((S1 >> i) & 1);
+      r = (r << 1) | ((S2 >> i) & 1);
+      r = (r << 1) | ((S3 >> i) & 1);
+      r = (r << 1) | ((S4 >> i) & 1);
+      r = (r << 1) | ((S5 >> i) & 1);
+      r = (r << 1) | ((S6 >> i) & 1);
+      r = (r << 1) | ((S7 >> i) & 1);
       }
 
    return r;
@@ -483,10 +484,10 @@ int main()
 
    uint32_t f32 = 0xFF010203;
 
-   for(size_t i = 0; i <= 0xFFFFFF; ++i)
+   for(size_t i = 0; i <= 0xFFFFFFFF; ++i)
       {
       uint32_t ref = SE_word(i);
-      uint32_t ct = aes_S<uint32_t>(i);
+      uint32_t ct = aes_S2<uint32_t>(i);
       if(ref != ct)
          {
          printf("%d %08X %08X\n", i, ref, ct);
