@@ -230,6 +230,50 @@ T aes_S(T x)
    return r;
    }
 
+      //Figure 9:  Bottom linear transform in reverse direction
+      /* wups
+      P0 = M52 + M61
+      P1 = M58 + M59
+      P2 = M54 + M62
+      P3 = M47 + M50
+      P4 = M48 + M56
+      P5 = M46 + M51
+      P6 = M49 + M60
+      P7 = P0 + P1
+      P8 = M50 + M53
+      P9 = M55 + M63
+
+      P10 = M57 + P4
+      P11 = P0 + P3
+      P12 = M46 + M48
+      P13 = M49 + M51
+      P14 = M49 + M62
+      P15 = M54 + M59
+      P16 = M57 + M61
+      P17 = M58 + P2
+      P18 = M63 + P5
+      P19 = P2 + P3
+
+      P20 = P4 + P6
+      P22 = P2 + P7
+      P23 = P7 + P8
+      P24 = P5 + P7
+      P25 = P6 + P10
+      P26 = P9 + P11
+      P27 = P10 + P18
+      P28 = P11 + P25
+      P29 = P15 + P20
+      W0 = P13 + P22
+
+      W1 = P26 + P29
+      W2 = P17 + P28
+      W3 = P12 + P22
+      W4 = P23 + P27
+      W5 = P19 + P24
+      W6 = P14 + P23
+      W7 = P9 + P16
+      */
+
 template<typename T>
 T aes_S2(T x)
    {
@@ -294,6 +338,7 @@ T aes_S2(T x)
       T26 = T3 + T16
       T27 = T1 + T12
 
+      // Figure 7:  Shared part of AES S-box circuit 
       M1 = T13 x T6
       M2 = T23 x T8
       M3 = T14 + M1
@@ -344,6 +389,64 @@ T aes_S2(T x)
       M46 = M44 x T6
       M47 = M40 x T8
       M48 = M39 x D
+
+      M49 = M43 x T16
+      M50 = M38 x T9
+      M51 = M37 x T17
+      M52 = M42 x T15
+      M53 = M45 x T27
+      M54 = M41 x T10
+      M55 = M44 x T13
+      M56 = M40 x T23
+      M57 = M39 x T19
+      M58 = M43 x T3
+      M59 = M38 x T22
+      M60 = M37 x T20
+      M61 = M42 x T1
+      M62 = M45 x T4
+      M63 = M41 x T2
+
+      // Figure 8:  Bottom linear transform in forward direction.
+      L0 = M61 + M62
+      L1 = M50 + M56
+      L2 = M46 + M48
+      L3 = M47 + M55
+      L4 = M54 + M58
+      L5 = M49 + M61
+      L6 = M62 + L5
+      L7 = M46 + L3
+      L8 = M51 + M59
+      L9 = M52 + M53
+      L10 = M53 + L4
+      L11 = M60 + L2
+      L12 = M48 + M51
+      L13 = M50 + L0
+      L14 = M52 + M61
+      L15 = M55 + L1
+      L16 = M56 + L0
+      L17 = M57 + L1
+      L18 = M58 + L8
+      L19 = M63 + L4
+
+      L20 = L0 + L1
+      L21 = L1 + L7
+      L22 = L3 + L12
+      L23 = L18 + L2
+      L24 = L15 + L9
+      L25 = L6 + L10
+      L26 = L7 + L9
+      L27 = L8 + L10
+      L28 = L11 + L14
+      L29 = L11 + L17
+
+      S0 = L6 + L24
+      S1 = L16 # L26
+      S2 = L19 # L28
+      S3 = L6 + L21
+      S4 = L20 + L22
+      S5 = L25 + L29
+      S6 = L13 # L27
+      S7 = L6 # L23
 
    T r = 0;
 
