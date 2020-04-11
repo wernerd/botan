@@ -110,29 +110,16 @@ inline constexpr uint8_t xtime11(uint8_t s) { return xtime8(s) ^ xtime(s) ^ s; }
 inline constexpr uint8_t xtime13(uint8_t s) { return xtime8(s) ^ xtime4(s) ^ s; }
 inline constexpr uint8_t xtime14(uint8_t s) { return xtime8(s) ^ xtime4(s) ^ xtime(s); }
 
-inline uint32_t SE_word(uint32_t I)
+inline void AES_SBOX(word V[8])
    {
-   word I0 = 0;
-   word I1 = 0;
-   word I2 = 0;
-   word I3 = 0;
-   word I4 = 0;
-   word I5 = 0;
-   word I6 = 0;
-   word I7 = 0;
-
-   // FIXME specialize this:
-   for(size_t i = 0; i != 8*sizeof(uint32_t); i += 8)
-      {
-      I0 = (I0 << 1) | ((I >> (7+i)) & 1);
-      I1 = (I1 << 1) | ((I >> (6+i)) & 1);
-      I2 = (I2 << 1) | ((I >> (5+i)) & 1);
-      I3 = (I3 << 1) | ((I >> (4+i)) & 1);
-      I4 = (I4 << 1) | ((I >> (3+i)) & 1);
-      I5 = (I5 << 1) | ((I >> (2+i)) & 1);
-      I6 = (I6 << 1) | ((I >> (1+i)) & 1);
-      I7 = (I7 << 1) | ((I >> (0+i)) & 1);
-      }
+   const word I0 = V[0];
+   const word I1 = V[1];
+   const word I2 = V[2];
+   const word I3 = V[3];
+   const word I4 = V[4];
+   const word I5 = V[5];
+   const word I6 = V[6];
+   const word I7 = V[7];
 
    /*
    Circuit for AES S-box from https://eprint.iacr.org/2011/332.pdf
@@ -281,19 +268,54 @@ inline uint32_t SE_word(uint32_t I)
    const word S6 = ~(L13 ^ L27);
    const word S7 = ~(L6 ^ L23);
 
+   V[0] = S0;
+   V[1] = S1;
+   V[2] = S2;
+   V[3] = S3;
+   V[4] = S4;
+   V[5] = S5;
+   V[6] = S6;
+   V[7] = S7;
+   }
+
+inline uint32_t SE_word(uint32_t x)
+   {
+   word I[8] = { 0 };
+
+   // FIXME specialize this:
+   #if 0
+   I[0] = (x & 0x8000000) >> (31-4) |
+      (x & 0x00800000) >> (23-3) |
+      (x & 0x00008000) >> (15-2) |
+      (x & 0x00000080) >> (7-1);
+   #endif
+   for(size_t i = 0; i != sizeof(uint32_t); i++)
+      {
+      I[0] = (I[0] << 1) | ((x >> (7+8*i)) & 1);
+      I[1] = (I[1] << 1) | ((x >> (6+8*i)) & 1);
+      I[2] = (I[2] << 1) | ((x >> (5+8*i)) & 1);
+      I[3] = (I[3] << 1) | ((x >> (4+8*i)) & 1);
+      I[4] = (I[4] << 1) | ((x >> (3+8*i)) & 1);
+      I[5] = (I[5] << 1) | ((x >> (2+8*i)) & 1);
+      I[6] = (I[6] << 1) | ((x >> (1+8*i)) & 1);
+      I[7] = (I[7] << 1) | ((x >> (0+8*i)) & 1);
+      }
+
+   AES_SBOX(I);
+
    uint32_t r = 0;
 
    // FIXME specialize this:
    for(size_t i = 0; i != sizeof(uint32_t); i += 1)
       {
-      r = (r << 1) | ((S0 >> i) & 1);
-      r = (r << 1) | ((S1 >> i) & 1);
-      r = (r << 1) | ((S2 >> i) & 1);
-      r = (r << 1) | ((S3 >> i) & 1);
-      r = (r << 1) | ((S4 >> i) & 1);
-      r = (r << 1) | ((S5 >> i) & 1);
-      r = (r << 1) | ((S6 >> i) & 1);
-      r = (r << 1) | ((S7 >> i) & 1);
+      r = (r << 1) | ((I[0] >> i) & 1);
+      r = (r << 1) | ((I[1] >> i) & 1);
+      r = (r << 1) | ((I[2] >> i) & 1);
+      r = (r << 1) | ((I[3] >> i) & 1);
+      r = (r << 1) | ((I[4] >> i) & 1);
+      r = (r << 1) | ((I[5] >> i) & 1);
+      r = (r << 1) | ((I[6] >> i) & 1);
+      r = (r << 1) | ((I[7] >> i) & 1);
       }
 
    return r;
@@ -302,47 +324,159 @@ inline uint32_t SE_word(uint32_t I)
 void SE_word_x4(uint32_t& B0, uint32_t& B1, uint32_t& B2, uint32_t& B3)
    {
    // FIXME can do it with one evaluation!
+   #if 0
    B0 = SE_word(B0);
    B1 = SE_word(B1);
    B2 = SE_word(B2);
    B3 = SE_word(B3);
+   #else
+   word I[8] = { 0 };
+
+   // FIXME specialize this:
+   for(size_t i = 0; i != 8*sizeof(uint32_t); i += 8)
+      {
+      I[0] = (I[0] << 1) | ((B0 >> (7+i)) & 1);
+      I[1] = (I[1] << 1) | ((B0 >> (6+i)) & 1);
+      I[2] = (I[2] << 1) | ((B0 >> (5+i)) & 1);
+      I[3] = (I[3] << 1) | ((B0 >> (4+i)) & 1);
+      I[4] = (I[4] << 1) | ((B0 >> (3+i)) & 1);
+      I[5] = (I[5] << 1) | ((B0 >> (2+i)) & 1);
+      I[6] = (I[6] << 1) | ((B0 >> (1+i)) & 1);
+      I[7] = (I[7] << 1) | ((B0 >> (0+i)) & 1);
+      }
+   for(size_t i = 0; i != 8*sizeof(uint32_t); i += 8)
+      {
+      I[0] = (I[0] << 1) | ((B1 >> (7+i)) & 1);
+      I[1] = (I[1] << 1) | ((B1 >> (6+i)) & 1);
+      I[2] = (I[2] << 1) | ((B1 >> (5+i)) & 1);
+      I[3] = (I[3] << 1) | ((B1 >> (4+i)) & 1);
+      I[4] = (I[4] << 1) | ((B1 >> (3+i)) & 1);
+      I[5] = (I[5] << 1) | ((B1 >> (2+i)) & 1);
+      I[6] = (I[6] << 1) | ((B1 >> (1+i)) & 1);
+      I[7] = (I[7] << 1) | ((B1 >> (0+i)) & 1);
+      }
+   for(size_t i = 0; i != 8*sizeof(uint32_t); i += 8)
+      {
+      I[0] = (I[0] << 1) | ((B2 >> (7+i)) & 1);
+      I[1] = (I[1] << 1) | ((B2 >> (6+i)) & 1);
+      I[2] = (I[2] << 1) | ((B2 >> (5+i)) & 1);
+      I[3] = (I[3] << 1) | ((B2 >> (4+i)) & 1);
+      I[4] = (I[4] << 1) | ((B2 >> (3+i)) & 1);
+      I[5] = (I[5] << 1) | ((B2 >> (2+i)) & 1);
+      I[6] = (I[6] << 1) | ((B2 >> (1+i)) & 1);
+      I[7] = (I[7] << 1) | ((B2 >> (0+i)) & 1);
+      }
+   for(size_t i = 0; i != 8*sizeof(uint32_t); i += 8)
+      {
+      I[0] = (I[0] << 1) | ((B3 >> (7+i)) & 1);
+      I[1] = (I[1] << 1) | ((B3 >> (6+i)) & 1);
+      I[2] = (I[2] << 1) | ((B3 >> (5+i)) & 1);
+      I[3] = (I[3] << 1) | ((B3 >> (4+i)) & 1);
+      I[4] = (I[4] << 1) | ((B3 >> (3+i)) & 1);
+      I[5] = (I[5] << 1) | ((B3 >> (2+i)) & 1);
+      I[6] = (I[6] << 1) | ((B3 >> (1+i)) & 1);
+      I[7] = (I[7] << 1) | ((B3 >> (0+i)) & 1);
+      }
+
+   AES_SBOX(I);
+
+   uint32_t Z0 = 0, Z1 = 0, Z2 = 0, Z3 = 0;
+
+   // FIXME specialize this:
+   for(size_t i = 0; i != sizeof(uint32_t); i += 1)
+      {
+      Z3 = (Z3 << 1) | ((I[0] >> i) & 1);
+      Z3 = (Z3 << 1) | ((I[1] >> i) & 1);
+      Z3 = (Z3 << 1) | ((I[2] >> i) & 1);
+      Z3 = (Z3 << 1) | ((I[3] >> i) & 1);
+      Z3 = (Z3 << 1) | ((I[4] >> i) & 1);
+      Z3 = (Z3 << 1) | ((I[5] >> i) & 1);
+      Z3 = (Z3 << 1) | ((I[6] >> i) & 1);
+      Z3 = (Z3 << 1) | ((I[7] >> i) & 1);
+      }
+   for(size_t i = 0; i != sizeof(uint32_t); i += 1)
+      {
+      Z2 = (Z2 << 1) | ((I[0] >> (4+i)) & 1);
+      Z2 = (Z2 << 1) | ((I[1] >> (4+i)) & 1);
+      Z2 = (Z2 << 1) | ((I[2] >> (4+i)) & 1);
+      Z2 = (Z2 << 1) | ((I[3] >> (4+i)) & 1);
+      Z2 = (Z2 << 1) | ((I[4] >> (4+i)) & 1);
+      Z2 = (Z2 << 1) | ((I[5] >> (4+i)) & 1);
+      Z2 = (Z2 << 1) | ((I[6] >> (4+i)) & 1);
+      Z2 = (Z2 << 1) | ((I[7] >> (4+i)) & 1);
+      }
+   for(size_t i = 0; i != sizeof(uint32_t); i += 1)
+      {
+      Z1 = (Z1 << 1) | ((I[0] >> (8+i)) & 1);
+      Z1 = (Z1 << 1) | ((I[1] >> (8+i)) & 1);
+      Z1 = (Z1 << 1) | ((I[2] >> (8+i)) & 1);
+      Z1 = (Z1 << 1) | ((I[3] >> (8+i)) & 1);
+      Z1 = (Z1 << 1) | ((I[4] >> (8+i)) & 1);
+      Z1 = (Z1 << 1) | ((I[5] >> (8+i)) & 1);
+      Z1 = (Z1 << 1) | ((I[6] >> (8+i)) & 1);
+      Z1 = (Z1 << 1) | ((I[7] >> (8+i)) & 1);
+      }
+   for(size_t i = 0; i != sizeof(uint32_t); i += 1)
+      {
+      Z0 = (Z0 << 1) | ((I[0] >> (12+i)) & 1);
+      Z0 = (Z0 << 1) | ((I[1] >> (12+i)) & 1);
+      Z0 = (Z0 << 1) | ((I[2] >> (12+i)) & 1);
+      Z0 = (Z0 << 1) | ((I[3] >> (12+i)) & 1);
+      Z0 = (Z0 << 1) | ((I[4] >> (12+i)) & 1);
+      Z0 = (Z0 << 1) | ((I[5] >> (12+i)) & 1);
+      Z0 = (Z0 << 1) | ((I[6] >> (12+i)) & 1);
+      Z0 = (Z0 << 1) | ((I[7] >> (12+i)) & 1);
+      }
+
+   B0 = Z0;
+   B1 = Z1;
+   B2 = Z2;
+   B3 = Z3;
+
+   #endif
    }
 
 inline uint32_t xtime_32(uint32_t s)
    {
    const uint32_t hb = ((s >> 7) & 0x01010101);
    const uint32_t shifted = (s << 1) & 0xFEFEFEFE;
+
+   //uint32_t carry = hb | (hb << 1);
+   //carry |= (carry << 3);
    const uint32_t carry = (hb << 4) | (hb << 3) | (hb << 1) | hb; // 0x1B
    return (shifted ^ carry);
    }
 
 inline uint32_t aes_enc_round(uint32_t V0, uint32_t V1, uint32_t V2, uint32_t V3)
    {
-   uint8_t b0 = get_byte(0, V0);
-   uint8_t b1 = get_byte(1, V1);
-   uint8_t b2 = get_byte(2, V2);
-   uint8_t b3 = get_byte(3, V3);
+   const uint8_t b0 = get_byte(0, V0);
+   const uint8_t b1 = get_byte(1, V1);
+   const uint8_t b2 = get_byte(2, V2);
+   const uint8_t b3 = get_byte(3, V3);
 
-   const uint32_t s = SE_word(make_uint32(b0, b1, b2, b3));
+   const uint32_t s = make_uint32(b0, b1, b2, b3);
 
    const uint32_t xtime_s = xtime_32(s);
    const uint32_t xtime3_s = xtime_s ^ s;
 
-   const uint32_t T0 = make_uint32(get_byte(0, xtime_s),  get_byte(0, s),        get_byte(0, s),        get_byte(0, xtime3_s));
-   const uint32_t T1 = make_uint32(get_byte(1, xtime3_s), get_byte(1, xtime_s),  get_byte(1, s),        get_byte(1, s));
-   const uint32_t T2 = make_uint32(get_byte(2, s),        get_byte(2, xtime3_s), get_byte(2, xtime_s),  get_byte(2, s));
-   const uint32_t T3 = make_uint32(get_byte(3, s),        get_byte(3, s),        get_byte(3, xtime3_s), get_byte(3, xtime_s));
+   const uint32_t Z0 = make_uint32(get_byte(0, xtime_s),  get_byte(0, s),        get_byte(0, s),        get_byte(0, xtime3_s));
+   const uint32_t Z1 = make_uint32(get_byte(1, xtime3_s), get_byte(1, xtime_s),  get_byte(1, s),        get_byte(1, s));
+   const uint32_t Z2 = make_uint32(get_byte(2, s),        get_byte(2, xtime3_s), get_byte(2, xtime_s),  get_byte(2, s));
+   const uint32_t Z3 = make_uint32(get_byte(3, s),        get_byte(3, s),        get_byte(3, xtime3_s), get_byte(3, xtime_s));
 
-   return (T0 ^ T1 ^ T2 ^ T3);
+   return (Z0 ^ Z1 ^ Z2 ^ Z3);
    }
 
 inline void aes_enc_r(uint32_t& B0, uint32_t& B1, uint32_t& B2, uint32_t& B3,
                       uint32_t K0, uint32_t K1, uint32_t K2, uint32_t K3)
    {
-   uint32_t T0 = aes_enc_round(B0, B1, B2, B3);
-   uint32_t T1 = aes_enc_round(B1, B2, B3, B0);
-   uint32_t T2 = aes_enc_round(B2, B3, B0, B1);
-   uint32_t T3 = aes_enc_round(B3, B0, B1, B2);
+   uint32_t S0 = B0, S1 = B1, S2 = B2, S3 = B3;
+   SE_word_x4(S0, S1, S2, S3);
+
+   const uint32_t T0 = aes_enc_round(S0, S1, S2, S3);
+   const uint32_t T1 = aes_enc_round(S1, S2, S3, S0);
+   const uint32_t T2 = aes_enc_round(S2, S3, S0, S1);
+   const uint32_t T3 = aes_enc_round(S3, S0, S1, S2);
 
    B0 = T0 ^ K0;
    B1 = T1 ^ K1;
@@ -415,6 +549,8 @@ void aes_encrypt_n(const uint8_t in[], uint8_t out[],
       // Final round:
       SE_word_x4(B0, B1, B2, B3);
       // FIXME ME should be words!!
+      // B0 ^= EK[...]; B1 ^= EK[...+1]; ...
+      // store_be(out, B0, B1, B2, B3);
 
       out[16*i+ 0] = get_byte(0, B0) ^ ME[0];
       out[16*i+ 1] = get_byte(1, B1) ^ ME[1];
