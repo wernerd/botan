@@ -1110,7 +1110,7 @@ int main()
    aes_nohw_setup_key_128(&aes128, key);
 
    const size_t trials = 128*10000;
-   const size_t blocks = 1;
+   const size_t blocks = 4;
    uint8_t block[16 * blocks];
 
    uint64_t start = get_cpu_cycle_counter();
@@ -1121,7 +1121,7 @@ int main()
       {
       AES_NOHW_BATCH batch;
       aes_nohw_to_batch(&batch, block, blocks);
-      aes_nohw_encrypt_batch(&sched, aes128.rounds, &batch);
+      aes_nohw_decrypt_batch(&sched, aes128.rounds, &batch);
       aes_nohw_from_batch(block, blocks, &batch);
       }
 

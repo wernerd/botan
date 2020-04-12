@@ -577,34 +577,128 @@ inline constexpr uint8_t xtime14(uint8_t s) { return xtime8(s) ^ xtime4(s) ^ xti
 
 inline uint32_t xtime_32(uint32_t s)
    {
+   const uint32_t ref =  make_uint32(xtime(get_byte(0, s)),
+                      xtime(get_byte(1, s)),
+                      xtime(get_byte(2, s)),
+                      xtime(get_byte(3, s)));
+   const uint32_t hb = ((s >> 7) & 0x01010101);
+
+   const uint32_t m = (hb << 4) | (hb << 3) | (hb << 1) | hb; // 0x1B
+
+   const uint32_t s0 = (s << 1) & 0xFEFEFEFE;
+
+   //printf("%08X %08X %08X\n", (s >> 7) & 0x01010101, s0, m);
+   uint32_t z = s0 ^ m;
+
+   if(ref != z)
+      printf("Bad: in=%08X ref=%08X z=%08X\n", s, ref, z);
+
+   return ref;
+   /*
    return make_uint32(xtime(get_byte(0, s)),
                       xtime(get_byte(1, s)),
                       xtime(get_byte(2, s)),
                       xtime(get_byte(3, s)));
+   */
    }
 
-#define AES_T(T, K, V0, V1, V2, V3)                                     \
-   (K ^ T[get_byte(0, V0)] ^                                            \
+#define AES_T(T, V0, V1, V2, V3)                                     \
+   (T[get_byte(0, V0)] ^                                            \
     rotr< 8>(T[get_byte(1, V1)]) ^                                      \
     rotr<16>(T[get_byte(2, V2)]) ^                                      \
     rotr<24>(T[get_byte(3, V3)]))
 
+#if 0
+void mix_columns(uint32_t& V0, uint32_t& V1, uint32_t& V2, uint32_t& V3)
+   {
+   const uint32_t Z0 = aes_S(V0);
+   const uint32_t Z1 = rotr<8>(aes_S(V1));
+   const uint32_t Z2 = rotr<16>(aes_S(V2));
+   const uint32_t Z3 = rotr<24>(aes_S(V3));
+
+   const uint32_t xtime_Z0 = xtime_32(Z0);
+   const uint32_t xtime_Z1 = xtime_32(Z1);
+   const uint32_t xtime_Z2 = xtime_32(Z2);
+   const uint32_t xtime_Z3 = xtime_32(Z3);
+   const uint32_t xtime3_Z0 = xtime_Z0 ^ Z0;
+   const uint32_t xtime3_Z1 = xtime_Z0 ^ Z1;
+   const uint32_t xtime3_Z2 = xtime_Z0 ^ Z2;
+   const uint32_t xtime3_Z3 = xtime_Z0 ^ Z3;
+
+   const uint32_t T00 = make_uint32(get_byte(0, xtime_Z0), get_byte(0, Z0), get_byte(0, Z0), get_byte(0, xtime3_Z0));
+   const uint32_t T01 = make_uint32(get_byte(1, xtime_Z0), get_byte(1, Z0), get_byte(1, Z0), get_byte(1, xtime3_Z0));
+   const uint32_t T02 = make_uint32(get_byte(2, xtime_Z0), get_byte(2, Z0), get_byte(2, Z0), get_byte(2, xtime3_Z0));
+   const uint32_t T03 = make_uint32(get_byte(3, xtime_Z0), get_byte(3, Z0), get_byte(3, Z0), get_byte(3, xtime3_Z0));
+
+   V0 = T00 ^ rotr<8>(T01) ^ rotr<16>(T02) ^ rotr<24>(T03);
+   }
+#endif
+
+uint32_t t_tables(uint32_t V0, uint32_t V1, uint32_t V2, uint32_t V3)
+   {
+   uint8_t b0 = get_byte(0, V0);
+   uint8_t b1 = get_byte(1, V1);
+   uint8_t b2 = get_byte(2, V2);
+   uint8_t b3 = get_byte(3, V3);
+
+   const uint32_t s = aes_S<uint32_t>(make_uint32(b0, b1, b2, b3));
+
+   const uint32_t xtime_s = xtime_32(s);
+   const uint32_t xtime3_s = xtime_s ^ s;
+
+   const uint32_t T0 = make_uint32(get_byte(0, xtime_s),  get_byte(0, s),        get_byte(0, s),        get_byte(0, xtime3_s));
+   const uint32_t T1 = make_uint32(get_byte(1, xtime3_s), get_byte(1, xtime_s),  get_byte(1, s),        get_byte(1, s));
+   const uint32_t T2 = make_uint32(get_byte(2, s),        get_byte(2, xtime3_s), get_byte(2, xtime_s),  get_byte(2, s));
+   const uint32_t T3 = make_uint32(get_byte(3, s),        get_byte(3, s),        get_byte(3, xtime3_s), get_byte(3, xtime_s));
+
+   return (T0 ^ T1 ^ T2 ^ T3);
+   }
+
 int main()
    {
+
+   #if 1
+   uint32_t V0 = 0x66666666;
+   uint32_t V1 = 0xFFFEFDFC;
+   uint32_t V2 = 0x66676869;
+   uint32_t V3 = 0x80FE0199;
+   #else
+   uint32_t V0 = 0x00000000;
+   uint32_t V1 = 0x00000000;
+   uint32_t V2 = 0x00000000;
+   uint32_t V3 = 0x00000000;
+
+   #endif
+   uint32_t R0 = AES_T(Te0, V0, V1, V2, V3);
+   uint32_t R1 = AES_T(Te0, V1, V2, V3, V0);
+   uint32_t R2 = AES_T(Te0, V2, V3, V0, V1);
+   uint32_t R3 = AES_T(Te0, V3, V0, V1, V2);
+
+   printf("REF: %08X %08X %08X %08X\n", R0, R1, R2, R3);
+
+   uint32_t Z0 = t_tables(V0, V1, V2, V3);
+   uint32_t Z1 = t_tables(V1, V2, V3, V0);
+   uint32_t Z2 = t_tables(V2, V3, V0, V1);
+   uint32_t Z3 = t_tables(V3, V0, V1, V2);
+   printf("CT:  %08X %08X %08X %08X\n", Z0, Z1, Z2, Z3);
+
+
+   #if 0
    uint32_t TE[256] = { 0 };
    for(size_t i = 0; i != 256; i += 4)
       {
       const uint32_t s = aes_S<uint32_t>(make_uint32(i, i+1, i+2, i+3));
 
       const uint32_t xtime_s = xtime_32(s);
+      const uint32_t xtime3_s = xtime_s ^ s;
       const uint8_t s0 = get_byte(0, s);
       const uint8_t s1 = get_byte(1, s);
       const uint8_t s2 = get_byte(2, s);
       const uint8_t s3 = get_byte(3, s);
-      TE[i+0] = make_uint32(get_byte(0, xtime_s), s0, s0, xtime3(s0));
-      TE[i+1] = make_uint32(get_byte(1, xtime_s), s1, s1, xtime3(s1));
-      TE[i+2] = make_uint32(get_byte(2, xtime_s), s2, s2, xtime3(s2));
-      TE[i+3] = make_uint32(get_byte(3, xtime_s), s3, s3, xtime3(s3));
+      TE[i+0] = make_uint32(get_byte(0, xtime_s), s0, s0, get_byte(0, xtime3_s));
+      TE[i+1] = make_uint32(get_byte(1, xtime_s), s1, s1, get_byte(1, xtime3_s));
+      TE[i+2] = make_uint32(get_byte(2, xtime_s), s2, s2, get_byte(2, xtime3_s));
+      TE[i+3] = make_uint32(get_byte(3, xtime_s), s3, s3, get_byte(3, xtime3_s));
       }
 
    for(size_t i = 0; i != 256; ++i)
@@ -616,6 +710,7 @@ int main()
          }
       }
    printf("table ok\n");
+   #endif
 
 #if 0
    uint16_t z = 0;

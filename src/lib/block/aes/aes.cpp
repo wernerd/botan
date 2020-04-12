@@ -449,12 +449,10 @@ inline uint32_t xtime_32(uint32_t s)
 
 inline uint32_t aes_enc_round(uint32_t V0, uint32_t V1, uint32_t V2, uint32_t V3)
    {
-   const uint8_t b0 = get_byte(0, V0);
-   const uint8_t b1 = get_byte(1, V1);
-   const uint8_t b2 = get_byte(2, V2);
-   const uint8_t b3 = get_byte(3, V3);
-
-   const uint32_t s = make_uint32(b0, b1, b2, b3);
+   const uint32_t s = make_uint32(get_byte(0, V0),
+                                  get_byte(1, V1),
+                                  get_byte(2, V2),
+                                  get_byte(3, V3));
 
    const uint32_t xtime_s = xtime_32(s);
    const uint32_t xtime3_s = xtime_s ^ s;
@@ -549,6 +547,7 @@ void aes_encrypt_n(const uint8_t in[], uint8_t out[],
       // Final round:
       SE_word_x4(B0, B1, B2, B3);
       // FIXME ME should be words!!
+      // XXX still need to do shiftrows here <---- !!
       // B0 ^= EK[...]; B1 ^= EK[...+1]; ...
       // store_be(out, B0, B1, B2, B3);
 
