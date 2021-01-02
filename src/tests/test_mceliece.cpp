@@ -12,16 +12,12 @@
 
    #include <botan/mceliece.h>
    #include <botan/pubkey.h>
-   #include <botan/loadstor.h>
+   #include <botan/internal/loadstor.h>
    #include <botan/hash.h>
    #include <botan/hex.h>
 
    #if defined(BOTAN_HAS_HMAC_DRBG)
       #include <botan/hmac_drbg.h>
-   #endif
-
-   #if defined(BOTAN_HAS_MCEIES)
-      #include <botan/mceies.h>
    #endif
 
 #endif
@@ -112,7 +108,7 @@ class McEliece_Keygen_Encrypt_Test final : public Text_Based_Test
 
    };
 
-BOTAN_REGISTER_TEST("mce_keygen", McEliece_Keygen_Encrypt_Test);
+BOTAN_REGISTER_TEST("pubkey", "mce_keygen", McEliece_Keygen_Encrypt_Test);
 #endif
 
 
@@ -195,9 +191,6 @@ class McEliece_Tests final : public Test
                results.push_back(test_kem(sk, pk));
 #endif
 
-#if defined(BOTAN_HAS_MCEIES)
-               results.push_back(test_mceies(sk, pk));
-#endif
                }
             }
 
@@ -230,56 +223,9 @@ class McEliece_Tests final : public Test
          return result;
          }
 
-#if defined(BOTAN_HAS_MCEIES)
-      Test::Result test_mceies(const Botan::McEliece_PrivateKey& sk,
-                               const Botan::McEliece_PublicKey& pk)
-         {
-         Test::Result result("McEliece IES");
-         result.start_timer();
-
-         for(size_t i = 0; i <= 10; ++i)
-            {
-            uint8_t ad[8];
-            Botan::store_be(static_cast<uint64_t>(i), ad);
-            const size_t ad_len = sizeof(ad);
-
-            const Botan::secure_vector<uint8_t> pt = Test::rng().random_vec(Test::rng().next_byte());
-
-            const Botan::secure_vector<uint8_t> ct = mceies_encrypt(pk, pt.data(), pt.size(), ad, ad_len, Test::rng());
-            const Botan::secure_vector<uint8_t> dec = mceies_decrypt(sk, ct.data(), ct.size(), ad, ad_len);
-
-            result.test_eq("decrypted ok", dec, pt);
-
-            Botan::secure_vector<uint8_t> bad_ct = ct;
-            for(size_t j = 0; j != 3; ++j)
-               {
-               bad_ct = mutate_vec(ct, true);
-
-               try
-                  {
-                  mceies_decrypt(sk, bad_ct.data(), bad_ct.size(), ad, ad_len);
-                  result.test_failure("AEAD decrypted manipulated ciphertext");
-                  result.test_note("Manipulated text was " + Botan::hex_encode(bad_ct));
-                  }
-               catch(Botan::Integrity_Failure&)
-                  {
-                  result.test_note("AEAD rejected manipulated ciphertext");
-                  }
-               catch(std::exception& e)
-                  {
-                  result.test_failure("AEAD rejected manipulated ciphertext with unexpected error", e.what());
-                  }
-               }
-            }
-
-         result.end_timer();
-         return result;
-         }
-#endif
-
    };
 
-BOTAN_REGISTER_TEST("mceliece", McEliece_Tests);
+BOTAN_REGISTER_TEST("pubkey", "mceliece", McEliece_Tests);
 
 #endif
 

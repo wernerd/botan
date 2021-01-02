@@ -17,7 +17,6 @@
 #include <botan/x509path.h>
 #include <botan/x509self.h>
 #include <botan/data_src.h>
-#include <botan/parsing.h>
 
 #if defined(BOTAN_HAS_OCSP)
    #include <botan/ocsp.h>
@@ -68,9 +67,9 @@ class Trust_Root_Info final : public Command
                      output() << "# " << dn << "\n";
 
                   if(flag_set("display"))
-                     output() << cert->to_string() << "\n";
+                     output() << cert.to_string() << "\n";
 
-                  output() << cert->PEM_encode() << "\n";
+                  output() << cert.PEM_encode() << "\n";
                   }
                }
 
@@ -110,13 +109,14 @@ class Sign_Cert final : public Command
          const std::string hash = get_arg("hash");
 
          std::unique_ptr<Botan::Private_Key> key;
+         Botan::DataSource_Stream key_stream(key_file);
          if(!pass.empty())
             {
-            key.reset(Botan::PKCS8::load_key(key_file, rng(), pass));
+            key = Botan::PKCS8::load_key(key_stream, pass);
             }
          else
             {
-            key.reset(Botan::PKCS8::load_key(key_file, rng()));
+            key = Botan::PKCS8::load_key(key_stream);
             }
 
          if(!key)
@@ -313,7 +313,8 @@ class Gen_Self_Signed final : public Command
          {
          const std::string key_file = get_arg("key");
          const std::string passphrase = get_passphrase_arg("Passphrase for " + key_file, "key-pass");
-         std::unique_ptr<Botan::Private_Key> key(Botan::PKCS8::load_key(key_file, rng(), passphrase));
+         Botan::DataSource_Stream key_stream(key_file);
+         std::unique_ptr<Botan::Private_Key> key = Botan::PKCS8::load_key(key_stream, passphrase);
 
          if(!key)
             {
@@ -328,7 +329,7 @@ class Gen_Self_Signed final : public Command
          opts.country      = get_arg("country");
          opts.organization = get_arg("organization");
          opts.email        = get_arg("email");
-         opts.more_dns = Botan::split_on(get_arg("dns"), ',');
+         opts.more_dns = Command::split_on(get_arg("dns"), ',');
          const bool der_format = flag_set("der");
 
          std::string emsa = get_arg("emsa");
@@ -374,7 +375,8 @@ class Generate_PKCS10 final : public Command
 
       void go() override
          {
-         std::unique_ptr<Botan::Private_Key> key(Botan::PKCS8::load_key(get_arg("key"), rng(), get_arg("key-pass")));
+         Botan::DataSource_Stream key_stream(get_arg("key"));
+         std::unique_ptr<Botan::Private_Key> key = Botan::PKCS8::load_key(key_stream, get_arg("key-pass"));
 
          if(!key)
             {
@@ -387,14 +389,14 @@ class Generate_PKCS10 final : public Command
          opts.country      = get_arg("country");
          opts.organization = get_arg("organization");
          opts.email        = get_arg("email");
-         opts.more_dns     = Botan::split_on(get_arg("dns"), ',');
+         opts.more_dns     = Command::split_on(get_arg("dns"), ',');
 
          if(flag_set("ca"))
             {
             opts.CA_key(get_arg_sz("path-limit"));
             }
 
-         for(std::string ext_ku : Botan::split_on(get_arg("ext-ku"), ','))
+         for(std::string ext_ku : Command::split_on(get_arg("ext-ku"), ','))
             {
             opts.add_ex_constraint(ext_ku);
             }

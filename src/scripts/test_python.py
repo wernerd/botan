@@ -23,8 +23,8 @@ class BotanPythonTests(unittest.TestCase):
         version_str = botan2.version_string()
         self.assertTrue(version_str.startswith('Botan '))
 
-        self.assertEqual(botan2.version_major(), 2)
-        self.assertGreaterEqual(botan2.version_minor(), 8)
+        self.assertEqual(botan2.version_major(), 3)
+        self.assertGreaterEqual(botan2.version_minor(), 0)
 
         self.assertGreaterEqual(botan2.ffi_api_version(), 20180713)
 
@@ -196,14 +196,6 @@ class BotanPythonTests(unittest.TestCase):
         mce_priv = botan2.PrivateKey.create('McEliece', '2960,57', rng)
         mce_pub = mce_priv.get_public_key()
         self.assertEqual(mce_pub.estimated_strength(), 128)
-
-        mce_plaintext = rng.get(16)
-        mce_ad = rng.get(48)
-        mce_ciphertext = botan2.mceies_encrypt(mce_pub, rng, 'ChaCha20Poly1305', mce_plaintext, mce_ad)
-
-        mce_decrypt = botan2.mceies_decrypt(mce_priv, 'ChaCha20Poly1305', mce_ciphertext, mce_ad)
-
-        self.assertEqual(mce_plaintext, mce_decrypt)
 
     def test_rsa_load_store(self):
 

@@ -22,7 +22,7 @@ class BOTAN_PUBLIC_API(2,0) DH_PublicKey : public virtual DL_Scheme_PublicKey
 
       std::vector<uint8_t> public_value() const;
 
-      DL_Group::Format group_format() const override { return DL_Group::ANSI_X9_42; }
+      DL_Group_Format group_format() const override { return DL_Group_Format::ANSI_X9_42; }
 
       /**
       * Create a public key.
@@ -31,7 +31,7 @@ class BOTAN_PUBLIC_API(2,0) DH_PublicKey : public virtual DL_Scheme_PublicKey
       */
       DH_PublicKey(const AlgorithmIdentifier& alg_id,
                    const std::vector<uint8_t>& key_bits) :
-         DL_Scheme_PublicKey(alg_id, key_bits, DL_Group::ANSI_X9_42) {}
+         DL_Scheme_PublicKey(alg_id, key_bits, DL_Group_Format::ANSI_X9_42) {}
 
       /**
       * Construct a public key with the specified parameters.
@@ -69,6 +69,8 @@ class BOTAN_PUBLIC_API(2,0) DH_PrivateKey final : public DH_PublicKey,
       */
       DH_PrivateKey(RandomNumberGenerator& rng, const DL_Group& grp,
                     const BigInt& x = 0);
+
+      std::unique_ptr<Public_Key> public_key() const override;
 
       std::unique_ptr<PK_Ops::Key_Agreement>
          create_key_agreement_op(RandomNumberGenerator& rng,

@@ -10,11 +10,9 @@
 #define BOTAN_LOAD_STORE_H_
 
 #include <botan/types.h>
-#include <botan/bswap.h>
+#include <botan/internal/bswap.h>
 #include <botan/mem_ops.h>
 #include <vector>
-
-BOTAN_FUTURE_INTERNAL_HEADER(loadstor.h)
 
 #if defined(BOTAN_TARGET_CPU_IS_BIG_ENDIAN)
    #define BOTAN_ENDIAN_N2L(x) reverse_bytes(x)
@@ -104,7 +102,7 @@ inline constexpr uint64_t make_uint64(uint8_t i0, uint8_t i1, uint8_t i2, uint8_
 * @return off'th T of in, as a big-endian value
 */
 template<typename T>
-inline T load_be(const uint8_t in[], size_t off)
+inline constexpr T load_be(const uint8_t in[], size_t off)
    {
    in += off * sizeof(T);
    T out = 0;
@@ -120,7 +118,7 @@ inline T load_be(const uint8_t in[], size_t off)
 * @return off'th T of in, as a litte-endian value
 */
 template<typename T>
-inline T load_le(const uint8_t in[], size_t off)
+inline constexpr T load_le(const uint8_t in[], size_t off)
    {
    in += off * sizeof(T);
    T out = 0;
@@ -136,12 +134,12 @@ inline T load_le(const uint8_t in[], size_t off)
 * @return off'th uint16_t of in, as a big-endian value
 */
 template<>
-inline uint16_t load_be<uint16_t>(const uint8_t in[], size_t off)
+inline constexpr uint16_t load_be<uint16_t>(const uint8_t in[], size_t off)
    {
    in += off * sizeof(uint16_t);
 
 #if defined(BOTAN_ENDIAN_N2B)
-   uint16_t x;
+   uint16_t x = 0;
    typecast_copy(x, in);
    return BOTAN_ENDIAN_N2B(x);
 #else
@@ -156,12 +154,12 @@ inline uint16_t load_be<uint16_t>(const uint8_t in[], size_t off)
 * @return off'th uint16_t of in, as a little-endian value
 */
 template<>
-inline uint16_t load_le<uint16_t>(const uint8_t in[], size_t off)
+inline constexpr uint16_t load_le<uint16_t>(const uint8_t in[], size_t off)
    {
    in += off * sizeof(uint16_t);
 
 #if defined(BOTAN_ENDIAN_N2L)
-   uint16_t x;
+   uint16_t x = 0;
    typecast_copy(x, in);
    return BOTAN_ENDIAN_N2L(x);
 #else
@@ -176,11 +174,11 @@ inline uint16_t load_le<uint16_t>(const uint8_t in[], size_t off)
 * @return off'th uint32_t of in, as a big-endian value
 */
 template<>
-inline uint32_t load_be<uint32_t>(const uint8_t in[], size_t off)
+inline constexpr uint32_t load_be<uint32_t>(const uint8_t in[], size_t off)
    {
    in += off * sizeof(uint32_t);
 #if defined(BOTAN_ENDIAN_N2B)
-   uint32_t x;
+   uint32_t x = 0;
    typecast_copy(x, in);
    return BOTAN_ENDIAN_N2B(x);
 #else
@@ -195,11 +193,11 @@ inline uint32_t load_be<uint32_t>(const uint8_t in[], size_t off)
 * @return off'th uint32_t of in, as a little-endian value
 */
 template<>
-inline uint32_t load_le<uint32_t>(const uint8_t in[], size_t off)
+inline constexpr uint32_t load_le<uint32_t>(const uint8_t in[], size_t off)
    {
    in += off * sizeof(uint32_t);
 #if defined(BOTAN_ENDIAN_N2L)
-   uint32_t x;
+   uint32_t x = 0;
    typecast_copy(x, in);
    return BOTAN_ENDIAN_N2L(x);
 #else
@@ -214,11 +212,11 @@ inline uint32_t load_le<uint32_t>(const uint8_t in[], size_t off)
 * @return off'th uint64_t of in, as a big-endian value
 */
 template<>
-inline uint64_t load_be<uint64_t>(const uint8_t in[], size_t off)
+inline constexpr uint64_t load_be<uint64_t>(const uint8_t in[], size_t off)
    {
    in += off * sizeof(uint64_t);
 #if defined(BOTAN_ENDIAN_N2B)
-   uint64_t x;
+   uint64_t x = 0;
    typecast_copy(x, in);
    return BOTAN_ENDIAN_N2B(x);
 #else
@@ -234,11 +232,11 @@ inline uint64_t load_be<uint64_t>(const uint8_t in[], size_t off)
 * @return off'th uint64_t of in, as a little-endian value
 */
 template<>
-inline uint64_t load_le<uint64_t>(const uint8_t in[], size_t off)
+inline constexpr uint64_t load_le<uint64_t>(const uint8_t in[], size_t off)
    {
    in += off * sizeof(uint64_t);
 #if defined(BOTAN_ENDIAN_N2L)
-   uint64_t x;
+   uint64_t x = 0;
    typecast_copy(x, in);
    return BOTAN_ENDIAN_N2L(x);
 #else
@@ -254,7 +252,7 @@ inline uint64_t load_le<uint64_t>(const uint8_t in[], size_t off)
 * @param x1 where the second word will be written
 */
 template<typename T>
-inline void load_le(const uint8_t in[], T& x0, T& x1)
+inline constexpr void load_le(const uint8_t in[], T& x0, T& x1)
    {
    x0 = load_le<T>(in, 0);
    x1 = load_le<T>(in, 1);
@@ -269,7 +267,7 @@ inline void load_le(const uint8_t in[], T& x0, T& x1)
 * @param x3 where the fourth word will be written
 */
 template<typename T>
-inline void load_le(const uint8_t in[],
+inline constexpr void load_le(const uint8_t in[],
                     T& x0, T& x1, T& x2, T& x3)
    {
    x0 = load_le<T>(in, 0);
@@ -291,7 +289,7 @@ inline void load_le(const uint8_t in[],
 * @param x7 where the eighth word will be written
 */
 template<typename T>
-inline void load_le(const uint8_t in[],
+inline constexpr void load_le(const uint8_t in[],
                     T& x0, T& x1, T& x2, T& x3,
                     T& x4, T& x5, T& x6, T& x7)
    {
@@ -312,7 +310,7 @@ inline void load_le(const uint8_t in[],
 * @param count how many words are in in
 */
 template<typename T>
-inline void load_le(T out[],
+inline constexpr void load_le(T out[],
                     const uint8_t in[],
                     size_t count)
    {
@@ -346,7 +344,7 @@ inline void load_le(T out[],
 * @param x1 where the second word will be written
 */
 template<typename T>
-inline void load_be(const uint8_t in[], T& x0, T& x1)
+inline constexpr void load_be(const uint8_t in[], T& x0, T& x1)
    {
    x0 = load_be<T>(in, 0);
    x1 = load_be<T>(in, 1);
@@ -361,7 +359,7 @@ inline void load_be(const uint8_t in[], T& x0, T& x1)
 * @param x3 where the fourth word will be written
 */
 template<typename T>
-inline void load_be(const uint8_t in[],
+inline constexpr void load_be(const uint8_t in[],
                     T& x0, T& x1, T& x2, T& x3)
    {
    x0 = load_be<T>(in, 0);
@@ -383,7 +381,7 @@ inline void load_be(const uint8_t in[],
 * @param x7 where the eighth word will be written
 */
 template<typename T>
-inline void load_be(const uint8_t in[],
+inline constexpr void load_be(const uint8_t in[],
                     T& x0, T& x1, T& x2, T& x3,
                     T& x4, T& x5, T& x6, T& x7)
    {
@@ -404,7 +402,7 @@ inline void load_be(const uint8_t in[],
 * @param count how many words are in in
 */
 template<typename T>
-inline void load_be(T out[],
+inline constexpr void load_be(T out[],
                     const uint8_t in[],
                     size_t count)
    {
@@ -435,7 +433,7 @@ inline void load_be(T out[],
 * @param in the input uint16_t
 * @param out the byte array to write to
 */
-inline void store_be(uint16_t in, uint8_t out[2])
+inline constexpr void store_be(uint16_t in, uint8_t out[2])
    {
 #if defined(BOTAN_ENDIAN_N2B)
    uint16_t o = BOTAN_ENDIAN_N2B(in);
@@ -451,7 +449,7 @@ inline void store_be(uint16_t in, uint8_t out[2])
 * @param in the input uint16_t
 * @param out the byte array to write to
 */
-inline void store_le(uint16_t in, uint8_t out[2])
+inline constexpr void store_le(uint16_t in, uint8_t out[2])
    {
 #if defined(BOTAN_ENDIAN_N2L)
    uint16_t o = BOTAN_ENDIAN_N2L(in);
@@ -467,7 +465,7 @@ inline void store_le(uint16_t in, uint8_t out[2])
 * @param in the input uint32_t
 * @param out the byte array to write to
 */
-inline void store_be(uint32_t in, uint8_t out[4])
+inline constexpr void store_be(uint32_t in, uint8_t out[4])
    {
 #if defined(BOTAN_ENDIAN_B2N)
    uint32_t o = BOTAN_ENDIAN_B2N(in);
@@ -485,7 +483,7 @@ inline void store_be(uint32_t in, uint8_t out[4])
 * @param in the input uint32_t
 * @param out the byte array to write to
 */
-inline void store_le(uint32_t in, uint8_t out[4])
+inline constexpr void store_le(uint32_t in, uint8_t out[4])
    {
 #if defined(BOTAN_ENDIAN_L2N)
    uint32_t o = BOTAN_ENDIAN_L2N(in);
@@ -503,7 +501,7 @@ inline void store_le(uint32_t in, uint8_t out[4])
 * @param in the input uint64_t
 * @param out the byte array to write to
 */
-inline void store_be(uint64_t in, uint8_t out[8])
+inline constexpr void store_be(uint64_t in, uint8_t out[8])
    {
 #if defined(BOTAN_ENDIAN_B2N)
    uint64_t o = BOTAN_ENDIAN_B2N(in);
@@ -525,7 +523,7 @@ inline void store_be(uint64_t in, uint8_t out[8])
 * @param in the input uint64_t
 * @param out the byte array to write to
 */
-inline void store_le(uint64_t in, uint8_t out[8])
+inline constexpr void store_le(uint64_t in, uint8_t out[8])
    {
 #if defined(BOTAN_ENDIAN_L2N)
    uint64_t o = BOTAN_ENDIAN_L2N(in);
@@ -549,7 +547,7 @@ inline void store_le(uint64_t in, uint8_t out[8])
 * @param x1 the second word
 */
 template<typename T>
-inline void store_le(uint8_t out[], T x0, T x1)
+inline constexpr void store_le(uint8_t out[], T x0, T x1)
    {
    store_le(x0, out + (0 * sizeof(T)));
    store_le(x1, out + (1 * sizeof(T)));
@@ -562,7 +560,7 @@ inline void store_le(uint8_t out[], T x0, T x1)
 * @param x1 the second word
 */
 template<typename T>
-inline void store_be(uint8_t out[], T x0, T x1)
+inline constexpr void store_be(uint8_t out[], T x0, T x1)
    {
    store_be(x0, out + (0 * sizeof(T)));
    store_be(x1, out + (1 * sizeof(T)));
@@ -577,7 +575,7 @@ inline void store_be(uint8_t out[], T x0, T x1)
 * @param x3 the fourth word
 */
 template<typename T>
-inline void store_le(uint8_t out[], T x0, T x1, T x2, T x3)
+inline constexpr void store_le(uint8_t out[], T x0, T x1, T x2, T x3)
    {
    store_le(x0, out + (0 * sizeof(T)));
    store_le(x1, out + (1 * sizeof(T)));
@@ -594,7 +592,7 @@ inline void store_le(uint8_t out[], T x0, T x1, T x2, T x3)
 * @param x3 the fourth word
 */
 template<typename T>
-inline void store_be(uint8_t out[], T x0, T x1, T x2, T x3)
+inline constexpr void store_be(uint8_t out[], T x0, T x1, T x2, T x3)
    {
    store_be(x0, out + (0 * sizeof(T)));
    store_be(x1, out + (1 * sizeof(T)));
@@ -615,7 +613,7 @@ inline void store_be(uint8_t out[], T x0, T x1, T x2, T x3)
 * @param x7 the eighth word
 */
 template<typename T>
-inline void store_le(uint8_t out[], T x0, T x1, T x2, T x3,
+inline constexpr void store_le(uint8_t out[], T x0, T x1, T x2, T x3,
                                  T x4, T x5, T x6, T x7)
    {
    store_le(x0, out + (0 * sizeof(T)));
@@ -641,7 +639,7 @@ inline void store_le(uint8_t out[], T x0, T x1, T x2, T x3,
 * @param x7 the eighth word
 */
 template<typename T>
-inline void store_be(uint8_t out[], T x0, T x1, T x2, T x3,
+inline constexpr void store_be(uint8_t out[], T x0, T x1, T x2, T x3,
                                  T x4, T x5, T x6, T x7)
    {
    store_be(x0, out + (0 * sizeof(T)));

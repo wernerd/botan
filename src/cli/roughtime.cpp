@@ -15,7 +15,7 @@
 #include <botan/base64.h>
 #include <botan/ed25519.h>
 #include <botan/hash.h>
-#include <botan/calendar.h>
+#include <botan/internal/calendar.h>
 
 #include <iomanip>
 #include <fstream>
@@ -47,7 +47,7 @@ class RoughtimeCheck final : public Command
             if(flag_set("raw-time"))
                { output() << Botan::Roughtime::Response::sys_microseconds64(response.utc_midpoint()).time_since_epoch().count(); }
             else
-               { output() << Botan::calendar_value(response.utc_midpoint()).to_string(); }
+               { output() << Botan::calendar_point(response.utc_midpoint()).to_string(); }
             output() << " (+-" << Botan::Roughtime::Response::microseconds32(response.utc_radius()).count() << "us)\n";
             }
          }
@@ -116,7 +116,7 @@ class Roughtime final : public Command
          if(flag_set("raw-time"))
             { output() << "UTC " << Botan::Roughtime::Response::sys_microseconds64(response.utc_midpoint()).time_since_epoch().count(); }
          else
-            { output() << "UTC " << Botan::calendar_value(response.utc_midpoint()).to_string(); }
+            { output() << "UTC " << Botan::calendar_point(response.utc_midpoint()).to_string(); }
          output() << " (+-" << Botan::Roughtime::Response::microseconds32(response.utc_radius()).count() << "us)";
          if(!response.validate(public_key))
             {

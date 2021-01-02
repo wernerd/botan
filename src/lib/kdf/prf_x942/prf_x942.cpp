@@ -5,10 +5,10 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/prf_x942.h>
+#include <botan/internal/prf_x942.h>
 #include <botan/der_enc.h>
 #include <botan/hash.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <algorithm>
 
 namespace Botan {
@@ -24,17 +24,25 @@ std::vector<uint8_t> encode_x942_int(uint32_t n)
    store_be(n, n_buf);
 
    std::vector<uint8_t> output;
-   DER_Encoder(output).encode(n_buf, 4, OCTET_STRING);
+   DER_Encoder(output).encode(n_buf, 4, ASN1_Tag::OCTET_STRING);
    return output;
    }
 
 }
 
-size_t X942_PRF::kdf(uint8_t key[], size_t key_len,
-                     const uint8_t secret[], size_t secret_len,
-                     const uint8_t salt[], size_t salt_len,
-                     const uint8_t label[], size_t label_len) const
+void X942_PRF::kdf(uint8_t key[], size_t key_len,
+                   const uint8_t secret[], size_t secret_len,
+                   const uint8_t salt[], size_t salt_len,
+                   const uint8_t label[], size_t label_len) const
    {
+   if(key_len == 0)
+      return;
+
+   const size_t blocks_required = key_len / 20; // Fixed to use SHA-1
+
+   if(blocks_required >= 0xFFFFFFFE)
+      throw Invalid_Argument("X942_PRF maximum output length exceeeded");
+
    std::unique_ptr<HashFunction> hash(HashFunction::create("SHA-160"));
 
    secure_vector<uint8_t> h;
@@ -51,9 +59,9 @@ size_t X942_PRF::kdf(uint8_t key[], size_t key_len,
       hash->update(secret, secret_len);
 
       hash->update(
-         DER_Encoder().start_cons(SEQUENCE)
+         DER_Encoder().start_sequence()
 
-            .start_cons(SEQUENCE)
+            .start_sequence()
                .encode(m_key_wrap_oid)
                .raw_bytes(encode_x942_int(counter))
             .end_cons()
@@ -61,7 +69,7 @@ size_t X942_PRF::kdf(uint8_t key[], size_t key_len,
             .encode_if(salt_len != 0,
                DER_Encoder()
                   .start_explicit(0)
-                     .encode(in, OCTET_STRING)
+                    .encode(in, ASN1_Tag::OCTET_STRING)
                   .end_explicit()
                )
 
@@ -78,9 +86,8 @@ size_t X942_PRF::kdf(uint8_t key[], size_t key_len,
       offset += copied;
 
       ++counter;
+      BOTAN_ASSERT_NOMSG(counter != 0);
       }
-
-   return offset;
    }
 
 std::string X942_PRF::name() const

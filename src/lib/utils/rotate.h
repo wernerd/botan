@@ -10,8 +10,6 @@
 
 #include <botan/types.h>
 
-BOTAN_FUTURE_INTERNAL_HEADER(rotate.h)
-
 namespace Botan {
 
 /**
@@ -45,7 +43,7 @@ inline constexpr T rotr(T input)
 * @return input rotated left by rot bits
 */
 template<typename T>
-inline T rotl_var(T input, size_t rot)
+inline constexpr T rotl_var(T input, size_t rot)
    {
    return rot ? static_cast<T>((input << rot) | (input >> (sizeof(T)*8 - rot))) : input;
    }
@@ -57,7 +55,7 @@ inline T rotl_var(T input, size_t rot)
 * @return input rotated right by rot bits
 */
 template<typename T>
-inline T rotr_var(T input, size_t rot)
+inline constexpr T rotr_var(T input, size_t rot)
    {
    return rot ? static_cast<T>((input >> rot) | (input << (sizeof(T)*8 - rot))) : input;
    }
@@ -83,23 +81,6 @@ inline uint32_t rotr_var(uint32_t input, size_t rot)
 #endif
 
 #endif
-
-
-template<typename T>
-BOTAN_DEPRECATED("Use rotl<N> or rotl_var")
-inline T rotate_left(T input, size_t rot)
-   {
-   // rotl_var does not reduce
-   return rotl_var(input, rot % (8 * sizeof(T)));
-   }
-
-template<typename T>
-BOTAN_DEPRECATED("Use rotr<N> or rotr_var")
-inline T rotate_right(T input, size_t rot)
-   {
-   // rotr_var does not reduce
-   return rotr_var(input, rot % (8 * sizeof(T)));
-   }
 
 }
 

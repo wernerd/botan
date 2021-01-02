@@ -8,8 +8,8 @@
 #include <botan/elgamal.h>
 #include <botan/internal/pk_ops_impl.h>
 #include <botan/internal/monty_exp.h>
-#include <botan/keypair.h>
-#include <botan/blinding.h>
+#include <botan/internal/keypair.h>
+#include <botan/internal/blinding.h>
 
 namespace Botan {
 
@@ -45,9 +45,14 @@ ElGamal_PrivateKey::ElGamal_PrivateKey(RandomNumberGenerator& rng,
 
 ElGamal_PrivateKey::ElGamal_PrivateKey(const AlgorithmIdentifier& alg_id,
                                        const secure_vector<uint8_t>& key_bits) :
-   DL_Scheme_PrivateKey(alg_id, key_bits, DL_Group::ANSI_X9_42)
+   DL_Scheme_PrivateKey(alg_id, key_bits, DL_Group_Format::ANSI_X9_42)
    {
    m_y = m_group.power_g_p(m_x, m_group.p_bits());
+   }
+
+std::unique_ptr<Public_Key> ElGamal_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new ElGamal_PublicKey(get_group(), get_y()));
    }
 
 /*

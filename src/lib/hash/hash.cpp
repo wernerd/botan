@@ -6,91 +6,87 @@
 */
 
 #include <botan/hash.h>
-#include <botan/scan_name.h>
+#include <botan/internal/scan_name.h>
 #include <botan/exceptn.h>
 
 #if defined(BOTAN_HAS_ADLER32)
-  #include <botan/adler32.h>
+  #include <botan/internal/adler32.h>
 #endif
 
 #if defined(BOTAN_HAS_CRC24)
-  #include <botan/crc24.h>
+  #include <botan/internal/crc24.h>
 #endif
 
 #if defined(BOTAN_HAS_CRC32)
-  #include <botan/crc32.h>
+  #include <botan/internal/crc32.h>
 #endif
 
 #if defined(BOTAN_HAS_GOST_34_11)
-  #include <botan/gost_3411.h>
+  #include <botan/internal/gost_3411.h>
 #endif
 
 #if defined(BOTAN_HAS_KECCAK)
-  #include <botan/keccak.h>
+  #include <botan/internal/keccak.h>
 #endif
 
 #if defined(BOTAN_HAS_MD4)
-  #include <botan/md4.h>
+  #include <botan/internal/md4.h>
 #endif
 
 #if defined(BOTAN_HAS_MD5)
-  #include <botan/md5.h>
+  #include <botan/internal/md5.h>
 #endif
 
 #if defined(BOTAN_HAS_RIPEMD_160)
-  #include <botan/rmd160.h>
+  #include <botan/internal/rmd160.h>
 #endif
 
 #if defined(BOTAN_HAS_SHA1)
-  #include <botan/sha160.h>
+  #include <botan/internal/sha160.h>
 #endif
 
 #if defined(BOTAN_HAS_SHA2_32)
-  #include <botan/sha2_32.h>
+  #include <botan/internal/sha2_32.h>
 #endif
 
 #if defined(BOTAN_HAS_SHA2_64)
-  #include <botan/sha2_64.h>
+  #include <botan/internal/sha2_64.h>
 #endif
 
 #if defined(BOTAN_HAS_SHA3)
-  #include <botan/sha3.h>
+  #include <botan/internal/sha3.h>
 #endif
 
 #if defined(BOTAN_HAS_SHAKE)
-  #include <botan/shake.h>
+  #include <botan/internal/shake.h>
 #endif
 
 #if defined(BOTAN_HAS_SKEIN_512)
-  #include <botan/skein_512.h>
+  #include <botan/internal/skein_512.h>
 #endif
 
 #if defined(BOTAN_HAS_STREEBOG)
-  #include <botan/streebog.h>
+  #include <botan/internal/streebog.h>
 #endif
 
 #if defined(BOTAN_HAS_SM3)
-  #include <botan/sm3.h>
-#endif
-
-#if defined(BOTAN_HAS_TIGER)
-  #include <botan/tiger.h>
+  #include <botan/internal/sm3.h>
 #endif
 
 #if defined(BOTAN_HAS_WHIRLPOOL)
-  #include <botan/whrlpool.h>
+  #include <botan/internal/whrlpool.h>
 #endif
 
 #if defined(BOTAN_HAS_PARALLEL_HASH)
-  #include <botan/par_hash.h>
+  #include <botan/internal/par_hash.h>
 #endif
 
 #if defined(BOTAN_HAS_COMB4P)
-  #include <botan/comb4p.h>
+  #include <botan/internal/comb4p.h>
 #endif
 
 #if defined(BOTAN_HAS_BLAKE2B)
-  #include <botan/blake2b.h>
+  #include <botan/internal/blake2b.h>
 #endif
 
 #if defined(BOTAN_HAS_OPENSSL)
@@ -228,15 +224,6 @@ std::unique_ptr<HashFunction> HashFunction::create(const std::string& algo_spec,
 
    const SCAN_Name req(algo_spec);
 
-#if defined(BOTAN_HAS_TIGER)
-   if(req.algo_name() == "Tiger")
-      {
-      return std::unique_ptr<HashFunction>(
-         new Tiger(req.arg_as_integer(0, 24),
-                   req.arg_as_integer(1, 3)));
-      }
-#endif
-
 #if defined(BOTAN_HAS_SKEIN_512)
    if(req.algo_name() == "Skein-512")
       {
@@ -270,13 +257,13 @@ std::unique_ptr<HashFunction> HashFunction::create(const std::string& algo_spec,
 #endif
 
 #if defined(BOTAN_HAS_SHAKE)
-   if(req.algo_name() == "SHAKE-128")
+   if(req.algo_name() == "SHAKE-128" && req.arg_count() == 1)
       {
-      return std::unique_ptr<HashFunction>(new SHAKE_128(req.arg_as_integer(0, 128)));
+      return std::unique_ptr<HashFunction>(new SHAKE_128(req.arg_as_integer(0)));
       }
-   if(req.algo_name() == "SHAKE-256")
+   if(req.algo_name() == "SHAKE-256" && req.arg_count() == 1)
       {
-      return std::unique_ptr<HashFunction>(new SHAKE_256(req.arg_as_integer(0, 256)));
+      return std::unique_ptr<HashFunction>(new SHAKE_256(req.arg_as_integer(0)));
       }
 #endif
 

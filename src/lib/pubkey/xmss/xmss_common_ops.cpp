@@ -6,7 +6,8 @@
  * Botan is released under the Simplified BSD License (see license.txt)
  **/
 
-#include <botan/xmss_common_ops.h>
+#include <botan/internal/xmss_common_ops.h>
+#include <botan/xmss_hash.h>
 
 namespace Botan {
 

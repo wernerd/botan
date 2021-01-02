@@ -7,7 +7,7 @@
 #include "tests.h"
 
 #if defined(BOTAN_HAS_PUBLIC_KEY_CRYPTO)
-   #include <botan/workfactor.h>
+   #include <botan/internal/workfactor.h>
 #endif
 
 namespace Botan_Tests {
@@ -34,7 +34,7 @@ class PK_Workfactor_Tests final : public Text_Based_Test
             }
          else if(type == "DL_Exponent_Size")
             {
-            output = Botan::dl_exponent_size(param_size) / 2;
+            output = Botan::dl_exponent_size(param_size);
             }
 
          Test::Result result(type + " work factor calculation");
@@ -44,7 +44,7 @@ class PK_Workfactor_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("pk_workfactor", PK_Workfactor_Tests);
+BOTAN_REGISTER_TEST("pubkey", "pk_workfactor", PK_Workfactor_Tests);
 #endif
 
 }

@@ -7,7 +7,7 @@
 */
 
 #include <botan/internal/os_utils.h>
-#include <botan/cpuid.h>
+#include <botan/internal/cpuid.h>
 #include <botan/exceptn.h>
 #include <botan/mem_ops.h>
 
@@ -132,7 +132,7 @@ unsigned long OS::get_auxval(unsigned long id)
    return 0;
 #elif defined(BOTAN_TARGET_OS_HAS_ELF_AUX_INFO)
    unsigned long auxinfo = 0;
-   ::elf_aux_info(id, &auxinfo, sizeof(auxinfo));
+   ::elf_aux_info(static_cast<int>(id), &auxinfo, sizeof(auxinfo));
    return auxinfo;
 #else
    BOTAN_UNUSED(id);

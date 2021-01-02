@@ -12,7 +12,7 @@
 
 #include <botan/internal/p11_mechanism.h>
 #include <botan/der_enc.h>
-#include <botan/pk_ops.h>
+#include <botan/internal/pk_ops.h>
 #include <botan/rng.h>
 
 namespace Botan {
@@ -30,6 +30,11 @@ ECDH_PrivateKey PKCS11_ECDH_PrivateKey::export_key() const
 
    Null_RNG rng;
    return ECDH_PrivateKey(rng, domain(), BigInt::decode(priv_key));
+   }
+
+std::unique_ptr<Public_Key> PKCS11_ECDH_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new ECDH_PublicKey(domain(), public_point()));
    }
 
 secure_vector<uint8_t> PKCS11_ECDH_PrivateKey::private_key_bits() const
@@ -55,7 +60,7 @@ class PKCS11_ECDH_KA_Operation final : public PK_Ops::Key_Agreement
          std::vector<uint8_t> der_encoded_other_key;
          if(m_key.point_encoding() == PublicPointEncoding::Der)
             {
-            DER_Encoder(der_encoded_other_key).encode(other_key, other_key_len, OCTET_STRING);
+            DER_Encoder(der_encoded_other_key).encode(other_key, other_key_len, ASN1_Tag::OCTET_STRING);
             m_mechanism.set_ecdh_other_key(der_encoded_other_key.data(), der_encoded_other_key.size());
             }
          else

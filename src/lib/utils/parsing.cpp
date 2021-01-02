@@ -7,17 +7,17 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 #include <botan/exceptn.h>
-#include <botan/charset.h>
-#include <botan/loadstor.h>
+#include <botan/internal/charset.h>
+#include <botan/internal/loadstor.h>
 #include <algorithm>
 #include <cctype>
 #include <limits>
 #include <set>
 
 #if defined(BOTAN_HAS_ASN1)
-  #include <botan/asn1_oid.h>
+  #include <botan/asn1_obj.h>
 #endif
 
 namespace Botan {
@@ -56,37 +56,6 @@ uint32_t to_u32bit(const std::string& str)
       }
 
    return static_cast<uint32_t>(x);
-   }
-
-/*
-* Convert a string into a time duration
-*/
-uint32_t timespec_to_u32bit(const std::string& timespec)
-   {
-   if(timespec.empty())
-      return 0;
-
-   const char suffix = timespec[timespec.size()-1];
-   std::string value = timespec.substr(0, timespec.size()-1);
-
-   uint32_t scale = 1;
-
-   if(Charset::is_digit(suffix))
-      value += suffix;
-   else if(suffix == 's')
-      scale = 1;
-   else if(suffix == 'm')
-      scale = 60;
-   else if(suffix == 'h')
-      scale = 60 * 60;
-   else if(suffix == 'd')
-      scale = 24 * 60 * 60;
-   else if(suffix == 'y')
-      scale = 365 * 24 * 60 * 60;
-   else
-      throw Decoding_Error("timespec_to_u32bit: Bad input " + timespec);
-
-   return scale * to_u32bit(value);
    }
 
 /*
@@ -147,19 +116,13 @@ std::vector<std::string> parse_algorithm_name(const std::string& namex)
 
 std::vector<std::string> split_on(const std::string& str, char delim)
    {
-   return split_on_pred(str, [delim](char c) { return c == delim; });
-   }
-
-std::vector<std::string> split_on_pred(const std::string& str,
-                                       std::function<bool (char)> pred)
-   {
    std::vector<std::string> elems;
    if(str.empty()) return elems;
 
    std::string substr;
    for(auto i = str.begin(); i != str.end(); ++i)
       {
-      if(pred(*i))
+      if(*i == delim)
          {
          if(!substr.empty())
             elems.push_back(substr);
@@ -191,19 +154,6 @@ std::string string_join(const std::vector<std::string>& strs, char delim)
       }
 
    return out;
-   }
-
-/*
-* Parse an ASN.1 OID string
-*/
-std::vector<uint32_t> parse_asn1_oid(const std::string& oid)
-   {
-#if defined(BOTAN_HAS_ASN1)
-   return OID(oid).get_components();
-#else
-   BOTAN_UNUSED(oid);
-   throw Not_Implemented("ASN1 support not available");
-#endif
    }
 
 /*
@@ -287,41 +237,6 @@ std::string ipv4_to_string(uint32_t ip)
       }
 
    return str;
-   }
-
-std::string erase_chars(const std::string& str, const std::set<char>& chars)
-   {
-   std::string out;
-
-   for(auto c: str)
-      if(chars.count(c) == 0)
-         out += c;
-
-   return out;
-   }
-
-std::string replace_chars(const std::string& str,
-                          const std::set<char>& chars,
-                          char to_char)
-   {
-   std::string out = str;
-
-   for(size_t i = 0; i != out.size(); ++i)
-      if(chars.count(out[i]))
-         out[i] = to_char;
-
-   return out;
-   }
-
-std::string replace_char(const std::string& str, char from_char, char to_char)
-   {
-   std::string out = str;
-
-   for(size_t i = 0; i != out.size(); ++i)
-      if(out[i] == from_char)
-         out[i] = to_char;
-
-   return out;
    }
 
 namespace {

@@ -11,16 +11,22 @@
  */
 
 #include <botan/mceliece.h>
+#include <botan/internal/polyn_gf2m.h>
 #include <botan/internal/mce_internal.h>
 #include <botan/internal/bit_ops.h>
 #include <botan/internal/code_based_util.h>
 #include <botan/internal/pk_ops_impl.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
 #include <botan/rng.h>
 
 namespace Botan {
+
+McEliece_PrivateKey::McEliece_PrivateKey(const McEliece_PrivateKey&) = default;
+McEliece_PrivateKey::McEliece_PrivateKey(McEliece_PrivateKey&&) = default;
+McEliece_PrivateKey& McEliece_PrivateKey::operator=(const McEliece_PrivateKey&) = default;
+McEliece_PrivateKey& McEliece_PrivateKey::operator=(McEliece_PrivateKey&&) = default;
 
 McEliece_PrivateKey::McEliece_PrivateKey(polyn_gf2m const& goppa_polyn,
                                          std::vector<uint32_t> const& parity_check_matrix_coeffs,
@@ -28,7 +34,7 @@ McEliece_PrivateKey::McEliece_PrivateKey(polyn_gf2m const& goppa_polyn,
                                          std::vector<gf2m> const& inverse_support,
                                          std::vector<uint8_t> const& public_matrix) :
    McEliece_PublicKey(public_matrix, goppa_polyn.get_degree(), inverse_support.size()),
-   m_g(goppa_polyn),
+   m_g{goppa_polyn},
    m_sqrtmod(square_root_matrix),
    m_Linv(inverse_support),
    m_coeffs(parity_check_matrix_coeffs),
@@ -41,6 +47,13 @@ McEliece_PrivateKey::McEliece_PrivateKey(RandomNumberGenerator& rng, size_t code
    {
    uint32_t ext_deg = ceil_log2(code_length);
    *this = generate_mceliece_key(rng, ext_deg, code_length, t);
+   }
+
+McEliece_PrivateKey::~McEliece_PrivateKey() = default;
+
+const polyn_gf2m& McEliece_PrivateKey::get_goppa_polyn() const
+   {
+   return m_g[0];
    }
 
 size_t McEliece_PublicKey::get_message_word_bit_length() const
@@ -75,12 +88,12 @@ std::vector<uint8_t> McEliece_PublicKey::public_key_bits() const
    {
    std::vector<uint8_t> output;
    DER_Encoder(output)
-      .start_cons(SEQUENCE)
-         .start_cons(SEQUENCE)
+      .start_sequence()
+         .start_sequence()
          .encode(static_cast<size_t>(get_code_length()))
          .encode(static_cast<size_t>(get_t()))
          .end_cons()
-      .encode(m_public_matrix, OCTET_STRING)
+      .encode(m_public_matrix, ASN1_Tag::OCTET_STRING)
       .end_cons();
    return output;
    }
@@ -100,12 +113,12 @@ McEliece_PublicKey::McEliece_PublicKey(const std::vector<uint8_t>& key_bits)
    BER_Decoder dec(key_bits);
    size_t n;
    size_t t;
-   dec.start_cons(SEQUENCE)
-      .start_cons(SEQUENCE)
+   dec.start_sequence()
+      .start_sequence()
       .decode(n)
       .decode(t)
       .end_cons()
-      .decode(m_public_matrix, OCTET_STRING)
+      .decode(m_public_matrix, ASN1_Tag::OCTET_STRING)
       .end_cons();
    m_t = t;
    m_code_length = n;
@@ -114,17 +127,17 @@ McEliece_PublicKey::McEliece_PublicKey(const std::vector<uint8_t>& key_bits)
 secure_vector<uint8_t> McEliece_PrivateKey::private_key_bits() const
    {
    DER_Encoder enc;
-   enc.start_cons(SEQUENCE)
-      .start_cons(SEQUENCE)
+   enc.start_sequence()
+      .start_sequence()
       .encode(static_cast<size_t>(get_code_length()))
       .encode(static_cast<size_t>(get_t()))
       .end_cons()
-      .encode(m_public_matrix, OCTET_STRING)
-      .encode(m_g.encode(), OCTET_STRING); // g as octet string
-   enc.start_cons(SEQUENCE);
+      .encode(m_public_matrix, ASN1_Tag::OCTET_STRING)
+      .encode(m_g[0].encode(), ASN1_Tag::OCTET_STRING); // g as octet string
+   enc.start_sequence();
    for(size_t i = 0; i < m_sqrtmod.size(); i++)
       {
-      enc.encode(m_sqrtmod[i].encode(), OCTET_STRING);
+      enc.encode(m_sqrtmod[i].encode(), ASN1_Tag::OCTET_STRING);
       }
    enc.end_cons();
    secure_vector<uint8_t> enc_support;
@@ -134,7 +147,7 @@ secure_vector<uint8_t> McEliece_PrivateKey::private_key_bits() const
       enc_support.push_back(get_byte(0, Linv));
       enc_support.push_back(get_byte(1, Linv));
       }
-   enc.encode(enc_support, OCTET_STRING);
+   enc.encode(enc_support, ASN1_Tag::OCTET_STRING);
    secure_vector<uint8_t> enc_H;
    for(uint32_t coef : m_coeffs)
       {
@@ -143,7 +156,7 @@ secure_vector<uint8_t> McEliece_PrivateKey::private_key_bits() const
       enc_H.push_back(get_byte(2, coef));
       enc_H.push_back(get_byte(3, coef));
       }
-   enc.encode(enc_H, OCTET_STRING);
+   enc.encode(enc_H, ASN1_Tag::OCTET_STRING);
    enc.end_cons();
    return enc.get_contents();
    }
@@ -171,13 +184,13 @@ McEliece_PrivateKey::McEliece_PrivateKey(const secure_vector<uint8_t>& key_bits)
    size_t n, t;
    secure_vector<uint8_t> enc_g;
    BER_Decoder dec_base(key_bits);
-   BER_Decoder dec = dec_base.start_cons(SEQUENCE)
-      .start_cons(SEQUENCE)
+   BER_Decoder dec = dec_base.start_sequence()
+      .start_sequence()
       .decode(n)
       .decode(t)
       .end_cons()
-      .decode(m_public_matrix, OCTET_STRING)
-      .decode(enc_g, OCTET_STRING);
+      .decode(m_public_matrix, ASN1_Tag::OCTET_STRING)
+      .decode(enc_g, ASN1_Tag::OCTET_STRING);
 
    if(t == 0 || n == 0)
       throw Decoding_Error("invalid McEliece parameters");
@@ -189,16 +202,16 @@ McEliece_PrivateKey::McEliece_PrivateKey(const secure_vector<uint8_t>& key_bits)
    m_dimension = (n - m_codimension);
 
    std::shared_ptr<GF2m_Field> sp_field(new GF2m_Field(ext_deg));
-   m_g = polyn_gf2m(enc_g, sp_field);
-   if(m_g.get_degree() != static_cast<int>(t))
+   m_g = { polyn_gf2m(enc_g, sp_field) };
+   if(m_g[0].get_degree() != static_cast<int>(t))
       {
       throw Decoding_Error("degree of decoded Goppa polynomial is incorrect");
       }
-   BER_Decoder dec2 = dec.start_cons(SEQUENCE);
+   BER_Decoder dec2 = dec.start_sequence();
    for(uint32_t i = 0; i < t/2; i++)
       {
       secure_vector<uint8_t> sqrt_enc;
-      dec2.decode(sqrt_enc, OCTET_STRING);
+      dec2.decode(sqrt_enc, ASN1_Tag::OCTET_STRING);
       while(sqrt_enc.size() < (t*2))
          {
          // ensure that the length is always t
@@ -213,7 +226,7 @@ McEliece_PrivateKey::McEliece_PrivateKey(const secure_vector<uint8_t>& key_bits)
       }
    secure_vector<uint8_t> enc_support;
    BER_Decoder dec3 = dec2.end_cons()
-      .decode(enc_support, OCTET_STRING);
+      .decode(enc_support, ASN1_Tag::OCTET_STRING);
    if(enc_support.size() % 2)
       {
       throw Decoding_Error("encoded support has odd length");
@@ -228,7 +241,7 @@ McEliece_PrivateKey::McEliece_PrivateKey(const secure_vector<uint8_t>& key_bits)
       m_Linv.push_back(el);
       }
    secure_vector<uint8_t> enc_H;
-   dec3.decode(enc_H, OCTET_STRING)
+   dec3.decode(enc_H, ASN1_Tag::OCTET_STRING)
       .end_cons();
    if(enc_H.size() % 4)
       {
@@ -277,6 +290,13 @@ bool McEliece_PrivateKey::operator==(const McEliece_PrivateKey & other) const
       }
 
    return true;
+   }
+
+std::unique_ptr<Public_Key> McEliece_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new McEliece_PublicKey(
+                                         get_public_matrix(),
+                                         get_t(), get_code_length()));
    }
 
 bool McEliece_PublicKey::operator==(const McEliece_PublicKey& other) const

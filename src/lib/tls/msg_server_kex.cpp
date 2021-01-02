@@ -12,7 +12,7 @@
 #include <botan/internal/tls_handshake_io.h>
 #include <botan/internal/tls_handshake_state.h>
 #include <botan/credentials_manager.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <botan/pubkey.h>
 
 #include <botan/dh.h>
@@ -24,10 +24,6 @@
 
 #if defined(BOTAN_HAS_CECPQ1)
   #include <botan/cecpq1.h>
-#endif
-
-#if defined(BOTAN_HAS_SRP6)
-  #include <botan/srp6.h>
 #endif
 
 namespace Botan {
@@ -47,7 +43,7 @@ Server_Key_Exchange::Server_Key_Exchange(Handshake_IO& io,
    const std::string hostname = state.client_hello()->sni_hostname();
    const Kex_Algo kex_algo = state.ciphersuite().kex_method();
 
-   if(kex_algo == Kex_Algo::PSK || kex_algo == Kex_Algo::DHE_PSK || kex_algo == Kex_Algo::ECDHE_PSK)
+   if(kex_algo == Kex_Algo::PSK || kex_algo == Kex_Algo::ECDHE_PSK)
       {
       std::string identity_hint =
          creds.psk_identity_hint("tls-server", hostname);
@@ -55,7 +51,7 @@ Server_Key_Exchange::Server_Key_Exchange(Handshake_IO& io,
       append_tls_length_value(m_params, identity_hint, 2);
       }
 
-   if(kex_algo == Kex_Algo::DH || kex_algo == Kex_Algo::DHE_PSK)
+   if(kex_algo == Kex_Algo::DH)
       {
       const std::vector<Group_Params> dh_groups = state.client_hello()->supported_dh_groups();
 
@@ -137,37 +133,6 @@ Server_Key_Exchange::Server_Key_Exchange(Handshake_IO& io,
 
       append_tls_length_value(m_params, ecdh_public_val, 1);
       }
-#if defined(BOTAN_HAS_SRP6)
-   else if(kex_algo == Kex_Algo::SRP_SHA)
-      {
-      const std::string srp_identifier = state.client_hello()->srp_identifier();
-
-      std::string group_id;
-      BigInt v;
-      std::vector<uint8_t> salt;
-
-      const bool found = creds.srp_verifier("tls-server", hostname,
-                                            srp_identifier,
-                                            group_id, v, salt,
-                                            policy.hide_unknown_users());
-
-      if(!found)
-         throw TLS_Exception(Alert::UNKNOWN_PSK_IDENTITY,
-                             "Unknown SRP user " + srp_identifier);
-
-      m_srp_params.reset(new SRP6_Server_Session);
-
-      BigInt B = m_srp_params->step1(v, group_id,
-                                     "SHA-1", rng);
-
-      DL_Group group(group_id);
-
-      append_tls_length_value(m_params, BigInt::encode(group.get_p()), 2);
-      append_tls_length_value(m_params, BigInt::encode(group.get_g()), 2);
-      append_tls_length_value(m_params, salt, 1);
-      append_tls_length_value(m_params, BigInt::encode(B), 2);
-      }
-#endif
 #if defined(BOTAN_HAS_CECPQ1)
    else if(kex_algo == Kex_Algo::CECPQ1)
       {
@@ -219,12 +184,12 @@ Server_Key_Exchange::Server_Key_Exchange(const std::vector<uint8_t>& buf,
    * is prepared.
    */
 
-   if(kex_algo == Kex_Algo::PSK || kex_algo == Kex_Algo::DHE_PSK || kex_algo == Kex_Algo::ECDHE_PSK)
+   if(kex_algo == Kex_Algo::PSK || kex_algo == Kex_Algo::ECDHE_PSK)
       {
       reader.get_string(2, 0, 65535); // identity hint
       }
 
-   if(kex_algo == Kex_Algo::DH || kex_algo == Kex_Algo::DHE_PSK)
+   if(kex_algo == Kex_Algo::DH)
       {
       // 3 bigints, DH p, g, Y
 
@@ -239,15 +204,6 @@ Server_Key_Exchange::Server_Key_Exchange(const std::vector<uint8_t>& buf,
       reader.get_uint16_t(); // curve id
       reader.get_range<uint8_t>(1, 1, 255); // public key
       }
-   else if(kex_algo == Kex_Algo::SRP_SHA)
-      {
-      // 2 bigints (N,g) then salt, then server B
-
-      reader.get_range<uint8_t>(2, 1, 65535);
-      reader.get_range<uint8_t>(2, 1, 65535);
-      reader.get_range<uint8_t>(1, 1, 255);
-      reader.get_range<uint8_t>(2, 1, 65535);
-      }
    else if(kex_algo == Kex_Algo::CECPQ1)
       {
       // u16 blob
@@ -259,7 +215,7 @@ Server_Key_Exchange::Server_Key_Exchange(const std::vector<uint8_t>& buf,
 
    m_params.assign(buf.data(), buf.data() + reader.read_so_far());
 
-   if(auth_method != Auth_Method::ANONYMOUS && auth_method != Auth_Method::IMPLICIT)
+   if(auth_method != Auth_Method::IMPLICIT)
       {
       if(version.supports_negotiable_signature_algorithms())
          {

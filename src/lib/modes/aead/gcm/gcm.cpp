@@ -6,10 +6,10 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/gcm.h>
-#include <botan/ghash.h>
+#include <botan/internal/gcm.h>
+#include <botan/internal/ghash.h>
 #include <botan/block_cipher.h>
-#include <botan/ctr.h>
+#include <botan/internal/ctr.h>
 
 namespace Botan {
 
@@ -18,14 +18,12 @@ namespace Botan {
 */
 GCM_Mode::GCM_Mode(BlockCipher* cipher, size_t tag_size) :
    m_tag_size(tag_size),
-   m_cipher_name(cipher->name())
+   m_cipher_name(cipher->name()),
+   m_ctr(new CTR_BE(cipher, 4)),
+   m_ghash(new GHASH)
    {
    if(cipher->block_size() != GCM_BS)
       throw Invalid_Argument("Invalid block cipher for GCM");
-
-   m_ghash.reset(new GHASH);
-
-   m_ctr.reset(new CTR_BE(cipher, 4)); // CTR_BE takes ownership of cipher
 
    /* We allow any of the values 128, 120, 112, 104, or 96 bits as a tag size */
    /* 64 bit tag is still supported but deprecated and will be removed in the future */

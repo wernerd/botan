@@ -7,9 +7,9 @@
 */
 
 #include <botan/internal/p11_mechanism.h>
-#include <botan/scan_name.h>
-#include <botan/parsing.h>
-#include <botan/emsa.h>
+#include <botan/internal/scan_name.h>
+#include <botan/internal/parsing.h>
+#include <botan/internal/emsa.h>
 
 #include <tuple>
 

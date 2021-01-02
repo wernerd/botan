@@ -8,7 +8,7 @@
 #include <botan/system_rng.h>
 
 #if defined(BOTAN_TARGET_OS_HAS_RTLGENRANDOM)
-  #include <botan/dyn_load.h>
+  #include <botan/internal/dyn_load.h>
   #define NOMINMAX 1
   #define _WINSOCKAPI_ // stop windows.h including winsock.h
   #include <windows.h>
@@ -59,10 +59,7 @@ class System_RNG_Impl final : public RandomNumberGenerator
       void clear() override { /* not possible */ }
       std::string name() const override { return "RtlGenRandom"; }
    private:
-      // Use type BYTE instead of BOOLEAN because of a naming conflict
-      // https://msdn.microsoft.com/en-us/library/windows/desktop/aa387694(v=vs.85).aspx
-      // https://msdn.microsoft.com/en-us/library/windows/desktop/aa383751(v=vs.85).aspx
-      using RtlGenRandom_fptr = BYTE (NTAPI *)(PVOID, ULONG);
+      using RtlGenRandom_fptr = BOOLEAN (NTAPI *)(PVOID, ULONG);
 
       Dynamically_Loaded_Library m_advapi;
       RtlGenRandom_fptr m_rtlgenrandom;

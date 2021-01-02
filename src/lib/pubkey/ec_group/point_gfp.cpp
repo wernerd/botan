@@ -10,7 +10,6 @@
 #include <botan/point_gfp.h>
 #include <botan/numthry.h>
 #include <botan/rng.h>
-#include <botan/internal/rounding.h>
 #include <botan/internal/ct_utils.h>
 
 namespace Botan {
@@ -427,6 +426,12 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
       return;
       }
 
+   for(size_t i = 0; i != points.size(); ++i)
+      {
+      if(points[i].is_zero())
+         throw Invalid_State("Cannot convert zero ECC point to affine");
+      }
+
    /*
    For >= 2 points use Montgomery's trick
 
@@ -499,7 +504,7 @@ bool PointGFp::is_affine() const
 BigInt PointGFp::get_affine_x() const
    {
    if(is_zero())
-      throw Illegal_Transformation("Cannot convert zero point to affine");
+      throw Invalid_State("Cannot convert zero point to affine");
 
    secure_vector<word> monty_ws;
 
@@ -518,7 +523,7 @@ BigInt PointGFp::get_affine_x() const
 BigInt PointGFp::get_affine_y() const
    {
    if(is_zero())
-      throw Illegal_Transformation("Cannot convert zero point to affine");
+      throw Invalid_State("Cannot convert zero point to affine");
 
    secure_vector<word> monty_ws;
 
@@ -648,7 +653,7 @@ BigInt decompress_point(bool yMod2,
    BigInt z = ressol(g, curve_p);
 
    if(z < 0)
-      throw Illegal_Point("error during EC point decompression");
+      throw Decoding_Error("Error during EC point decompression");
 
    if(z.get_bit(0) != yMod2)
       z = curve_p - z;
@@ -670,7 +675,7 @@ PointGFp OS2ECP(const uint8_t data[], size_t data_len,
    PointGFp point(curve, xy.first, xy.second);
 
    if(!point.on_the_curve())
-      throw Illegal_Point("OS2ECP: Decoded point was not on the curve");
+      throw Decoding_Error("OS2ECP: Decoded point was not on the curve");
 
    return point;
    }
@@ -714,7 +719,7 @@ std::pair<BigInt, BigInt> OS2ECP(const uint8_t data[], size_t data_len,
       const bool y_mod_2 = ((pc & 0x01) == 1);
 
       if(decompress_point(y_mod_2, x, curve_p, curve_a, curve_b) != y)
-         throw Illegal_Point("OS2ECP: Decoding error in hybrid format");
+         throw Decoding_Error("OS2ECP: Decoding error in hybrid format");
       }
    else
       throw Invalid_Argument("OS2ECP: Unknown format type " + std::to_string(pc));

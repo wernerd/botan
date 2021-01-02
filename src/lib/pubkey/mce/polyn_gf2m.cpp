@@ -10,12 +10,12 @@
  *
  */
 
-#include <botan/polyn_gf2m.h>
+#include <botan/internal/polyn_gf2m.h>
 #include <botan/internal/code_based_util.h>
 #include <botan/internal/bit_ops.h>
 #include <botan/rng.h>
 #include <botan/exceptn.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 
 namespace Botan {
 

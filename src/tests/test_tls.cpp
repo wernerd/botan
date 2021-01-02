@@ -50,7 +50,6 @@ class TLS_Session_Tests final : public Test
                                      std::vector<Botan::X509_Certificate>(),
                                      std::vector<uint8_t>(),
                                      Botan::TLS::Server_Information("server"),
-                                     "SRP username",
                                      0x0000);
 
          const std::string pem = session.PEM_encode();
@@ -73,7 +72,6 @@ class TLS_Session_Tests final : public Test
                         ctext2.data(), 12, expected_hdr.data(), 12);
 
          Botan::TLS::Session dsession = Botan::TLS::Session::decrypt(ctext1.data(), ctext1.size(), key);
-         result.test_eq("Decrypted session access works", dsession.srp_identifier(), "SRP username");
 
          Fixed_Output_RNG frng1("00112233445566778899AABBCCDDEEFF802802802802802802802802");
          const std::vector<uint8_t> ctextf1 = session.encrypt(key, frng1);
@@ -86,7 +84,7 @@ class TLS_Session_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_session", TLS_Session_Tests);
+BOTAN_REGISTER_TEST("tls", "tls_session", TLS_Session_Tests);
 
 #if defined(BOTAN_HAS_TLS_CBC)
 
@@ -108,7 +106,7 @@ class TLS_CBC_Padding_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_cbc_padding", TLS_CBC_Padding_Tests);
+BOTAN_REGISTER_TEST("tls", "tls_cbc_padding", TLS_CBC_Padding_Tests);
 
 class TLS_CBC_Tests final : public Text_Based_Test
    {
@@ -221,7 +219,7 @@ class TLS_CBC_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_cbc", TLS_CBC_Tests);
+BOTAN_REGISTER_TEST("tls", "tls_cbc", TLS_CBC_Tests);
 
 #endif
 
@@ -285,7 +283,7 @@ class Test_TLS_Alert_Strings : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_alert_strings", Test_TLS_Alert_Strings);
+BOTAN_REGISTER_TEST("tls", "tls_alert_strings", Test_TLS_Alert_Strings);
 
 class Test_TLS_Policy_Text : public Test
    {
@@ -364,7 +362,7 @@ class Test_TLS_Policy_Text : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_policy_text", Test_TLS_Policy_Text);
+BOTAN_REGISTER_TEST("tls", "tls_policy_text", Test_TLS_Policy_Text);
 
 class Test_TLS_Ciphersuites : public Test
    {
@@ -399,7 +397,7 @@ class Test_TLS_Ciphersuites : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_ciphersuites", Test_TLS_Ciphersuites);
+BOTAN_REGISTER_TEST("tls", "tls_ciphersuites", Test_TLS_Ciphersuites);
 
 class Test_TLS_Algo_Strings : public Test
    {
@@ -442,10 +440,8 @@ class Test_TLS_Algo_Strings : public Test
 
          const std::vector<Botan::TLS::Auth_Method> auth_methods({
             Botan::TLS::Auth_Method::RSA,
-            Botan::TLS::Auth_Method::DSA,
             Botan::TLS::Auth_Method::ECDSA,
             Botan::TLS::Auth_Method::IMPLICIT,
-            Botan::TLS::Auth_Method::ANONYMOUS
             });
 
          for(Botan::TLS::Auth_Method meth : auth_methods)
@@ -468,9 +464,7 @@ class Test_TLS_Algo_Strings : public Test
             Botan::TLS::Kex_Algo::DH,
             Botan::TLS::Kex_Algo::ECDH,
             Botan::TLS::Kex_Algo::CECPQ1,
-            Botan::TLS::Kex_Algo::SRP_SHA,
             Botan::TLS::Kex_Algo::PSK,
-            Botan::TLS::Kex_Algo::DHE_PSK,
             Botan::TLS::Kex_Algo::ECDHE_PSK
             });
 
@@ -487,7 +481,7 @@ class Test_TLS_Algo_Strings : public Test
 
    };
 
-BOTAN_REGISTER_TEST("tls_algo_strings", Test_TLS_Algo_Strings);
+BOTAN_REGISTER_TEST("tls", "tls_algo_strings", Test_TLS_Algo_Strings);
 
 #endif
 

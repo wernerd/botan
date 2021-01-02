@@ -92,7 +92,7 @@ class Ed25519_Curdle_Format_Tests final : public Test
          Test::Result result("Ed25519 CURDLE format");
 
          Botan::DataSource_Memory priv_data(priv_key_str);
-         std::unique_ptr<Botan::Private_Key> priv_key(Botan::PKCS8::load_key(priv_data, Test::rng()));
+         std::unique_ptr<Botan::Private_Key> priv_key = Botan::PKCS8::load_key(priv_data);
          result.confirm("Private key loaded", priv_key != nullptr);
 
          Botan::DataSource_Memory pub_data(pub_key_str);
@@ -111,9 +111,9 @@ class Ed25519_Curdle_Format_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("ed25519_verify", Ed25519_Verification_Tests);
-BOTAN_REGISTER_TEST("ed25519_sign", Ed25519_Signature_Tests);
-BOTAN_REGISTER_TEST("ed25519_curdle", Ed25519_Curdle_Format_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ed25519_verify", Ed25519_Verification_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ed25519_sign", Ed25519_Signature_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ed25519_curdle", Ed25519_Curdle_Format_Tests);
 
 #endif
 

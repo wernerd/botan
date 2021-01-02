@@ -11,8 +11,8 @@
 #if defined(BOTAN_HAS_ECDSA)
 
 #include <botan/internal/p11_mechanism.h>
-#include <botan/pk_ops.h>
-#include <botan/keypair.h>
+#include <botan/internal/pk_ops.h>
+#include <botan/internal/keypair.h>
 #include <botan/rng.h>
 
 namespace Botan {
@@ -50,6 +50,11 @@ ECDSA_PrivateKey PKCS11_ECDSA_PrivateKey::export_key() const
 secure_vector<uint8_t> PKCS11_ECDSA_PrivateKey::private_key_bits() const
    {
    return export_key().private_key_bits();
+   }
+
+std::unique_ptr<Public_Key> PKCS11_ECDSA_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new ECDSA_PublicKey(domain(), public_point()));
    }
 
 namespace {

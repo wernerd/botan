@@ -13,7 +13,7 @@
 #include <botan/ber_dec.h>
 #include <botan/secmem.h>
 #include <botan/point_gfp.h>
-#include <botan/workfactor.h>
+#include <botan/internal/workfactor.h>
 
 namespace Botan {
 
@@ -27,15 +27,24 @@ size_t EC_PublicKey::estimated_strength() const
    return ecp_work_factor(key_length());
    }
 
+namespace {
+
+EC_Group_Encoding default_encoding_for(EC_Group& group)
+   {
+   if(group.get_curve_oid().empty())
+      return EC_Group_Encoding::Explicit;
+   else
+      return EC_Group_Encoding::NamedCurve;
+   }
+
+}
+
 EC_PublicKey::EC_PublicKey(const EC_Group& dom_par,
                            const PointGFp& pub_point) :
-   m_domain_params(dom_par), m_public_key(pub_point)
+   m_domain_params(dom_par),
+   m_public_key(pub_point),
+   m_domain_encoding(default_encoding_for(m_domain_params))
    {
-   if (!dom_par.get_curve_oid().empty())
-      m_domain_encoding = EC_DOMPAR_ENC_OID;
-   else
-      m_domain_encoding = EC_DOMPAR_ENC_EXPLICIT;
-
 #if 0
    if(domain().get_curve() != public_point().get_curve())
       throw Invalid_Argument("EC_PublicKey: curve mismatch in constructor");
@@ -45,12 +54,9 @@ EC_PublicKey::EC_PublicKey(const EC_Group& dom_par,
 EC_PublicKey::EC_PublicKey(const AlgorithmIdentifier& alg_id,
                            const std::vector<uint8_t>& key_bits) :
    m_domain_params{EC_Group(alg_id.get_parameters())},
-   m_public_key{domain().OS2ECP(key_bits)}
+   m_public_key{domain().OS2ECP(key_bits)},
+   m_domain_encoding(default_encoding_for(m_domain_params))
    {
-   if (!domain().get_curve_oid().empty())
-      m_domain_encoding = EC_DOMPAR_ENC_OID;
-   else
-      m_domain_encoding = EC_DOMPAR_ENC_EXPLICIT;
    }
 
 bool EC_PublicKey::check_key(RandomNumberGenerator& rng,
@@ -83,15 +89,8 @@ void EC_PublicKey::set_point_encoding(PointGFp::Compression_Type enc)
 
 void EC_PublicKey::set_parameter_encoding(EC_Group_Encoding form)
    {
-   if(form != EC_DOMPAR_ENC_EXPLICIT &&
-      form != EC_DOMPAR_ENC_IMPLICITCA &&
-      form != EC_DOMPAR_ENC_OID)
-      throw Invalid_Argument("Invalid encoding form for EC-key object specified");
-
-   if((form == EC_DOMPAR_ENC_OID) && (m_domain_params.get_curve_oid().empty()))
-      throw Invalid_Argument("Invalid encoding form OID specified for "
-                             "EC-key object whose corresponding domain "
-                             "parameters are without oid");
+   if(form == EC_Group_Encoding::NamedCurve && m_domain_params.get_curve_oid().empty())
+      throw Invalid_Argument("Cannot used NamedCurve encoding for a curve without an OID");
 
    m_domain_encoding = form;
    }
@@ -113,10 +112,7 @@ EC_PrivateKey::EC_PrivateKey(RandomNumberGenerator& rng,
                              bool with_modular_inverse)
    {
    m_domain_params = ec_group;
-   if (!ec_group.get_curve_oid().empty())
-      m_domain_encoding = EC_DOMPAR_ENC_OID;
-   else
-      m_domain_encoding = EC_DOMPAR_ENC_EXPLICIT;
+   m_domain_encoding = default_encoding_for(m_domain_params);
 
    if(x == 0)
       {
@@ -147,11 +143,11 @@ EC_PrivateKey::EC_PrivateKey(RandomNumberGenerator& rng,
 secure_vector<uint8_t> EC_PrivateKey::private_key_bits() const
    {
    return DER_Encoder()
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .encode(static_cast<size_t>(1))
-         .encode(BigInt::encode_1363(m_private_key, m_private_key.bytes()), OCTET_STRING)
-         .start_cons(ASN1_Tag(1), PRIVATE)
-            .encode(m_public_key.encode(PointGFp::Compression_Type::UNCOMPRESSED), BIT_STRING)
+         .encode(BigInt::encode_1363(m_private_key, m_private_key.bytes()), ASN1_Tag::OCTET_STRING)
+         .start_cons(ASN1_Tag(1), ASN1_Tag::PRIVATE)
+            .encode(m_public_key.encode(PointGFp::Compression_Type::UNCOMPRESSED), ASN1_Tag::BIT_STRING)
          .end_cons()
       .end_cons()
       .get_contents();
@@ -162,22 +158,17 @@ EC_PrivateKey::EC_PrivateKey(const AlgorithmIdentifier& alg_id,
                              bool with_modular_inverse)
    {
    m_domain_params = EC_Group(alg_id.get_parameters());
-   m_domain_encoding = EC_DOMPAR_ENC_EXPLICIT;
-
-   if (!domain().get_curve_oid().empty())
-      m_domain_encoding = EC_DOMPAR_ENC_OID;
-   else
-      m_domain_encoding = EC_DOMPAR_ENC_EXPLICIT;
+   m_domain_encoding = default_encoding_for(m_domain_params);
 
    OID key_parameters;
    secure_vector<uint8_t> public_key_bits;
 
    BER_Decoder(key_bits)
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .decode_and_check<size_t>(1, "Unknown version code for ECC key")
          .decode_octet_string_bigint(m_private_key)
-         .decode_optional(key_parameters, ASN1_Tag(0), PRIVATE)
-         .decode_optional_string(public_key_bits, BIT_STRING, 1, PRIVATE)
+         .decode_optional(key_parameters, ASN1_Tag(0), ASN1_Tag::PRIVATE)
+         .decode_optional_string(public_key_bits, ASN1_Tag::BIT_STRING, 1, ASN1_Tag::PRIVATE)
       .end_cons();
 
    if(public_key_bits.empty())

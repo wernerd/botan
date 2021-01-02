@@ -9,6 +9,7 @@
 #include <botan/reducer.h>
 #include <botan/internal/rounding.h>
 #include <botan/internal/ct_utils.h>
+#include <iostream>
 
 namespace Botan {
 
@@ -26,28 +27,6 @@ PointGFp multi_exponentiate(const PointGFp& x, const BigInt& z1,
    {
    PointGFp_Multi_Point_Precompute xy_mul(x, y);
    return xy_mul.multi_exp(z1, z2);
-   }
-
-Blinded_Point_Multiply::Blinded_Point_Multiply(const PointGFp& base,
-                                               const BigInt& order,
-                                               size_t h) :
-   m_ws(PointGFp::WORKSPACE_SIZE),
-   m_order(order)
-   {
-   BOTAN_UNUSED(h);
-   Null_RNG null_rng;
-   m_point_mul.reset(new PointGFp_Var_Point_Precompute(base, null_rng, m_ws));
-   }
-
-Blinded_Point_Multiply::~Blinded_Point_Multiply()
-   {
-   /* for ~unique_ptr */
-   }
-
-PointGFp Blinded_Point_Multiply::blinded_multiply(const BigInt& scalar,
-                                                  RandomNumberGenerator& rng)
-   {
-   return m_point_mul->mul(scalar, rng, m_order, m_ws);
    }
 
 PointGFp_Base_Point_Precompute::PointGFp_Base_Point_Precompute(const PointGFp& base,
@@ -278,7 +257,7 @@ PointGFp PointGFp_Var_Point_Precompute::mul(const BigInt& k,
    const BigInt scalar = k + group_order * mask;
 
    const size_t elem_size = 3*m_p_words;
-   const size_t window_elems = (1ULL << m_window_bits);
+   const size_t window_elems = static_cast<size_t>(1) << m_window_bits;
 
    size_t windows = round_up(scalar.bits(), m_window_bits) / m_window_bits;
    PointGFp R(m_curve);
@@ -342,6 +321,12 @@ PointGFp PointGFp_Var_Point_Precompute::mul(const BigInt& k,
 PointGFp_Multi_Point_Precompute::PointGFp_Multi_Point_Precompute(const PointGFp& x,
                                                                  const PointGFp& y)
    {
+   if(x.on_the_curve() == false || y.on_the_curve() == false)
+      {
+      m_M.push_back(x.zero());
+      return;
+      }
+
    std::vector<BigInt> ws(PointGFp::WORKSPACE_SIZE);
 
    PointGFp x2 = x;
@@ -375,12 +360,27 @@ PointGFp_Multi_Point_Precompute::PointGFp_Multi_Point_Precompute(const PointGFp&
    m_M.push_back(y3.plus(x2, ws));
    m_M.push_back(y3.plus(x3, ws));
 
-   PointGFp::force_all_affine(m_M, ws[0].get_word_vector());
+   bool no_infinity = true;
+   for(auto& pt : m_M)
+      {
+      if(pt.is_zero())
+         no_infinity = false;
+      }
+
+   if(no_infinity)
+      {
+      PointGFp::force_all_affine(m_M, ws[0].get_word_vector());
+      }
+
+   m_no_infinity = no_infinity;
    }
 
 PointGFp PointGFp_Multi_Point_Precompute::multi_exp(const BigInt& z1,
                                                     const BigInt& z2) const
    {
+   if(m_M.size() == 1)
+      return m_M[0];
+
    std::vector<BigInt> ws(PointGFp::WORKSPACE_SIZE);
 
    const size_t z_bits = round_up(std::max(z1.bits(), z2.bits()), 2);
@@ -402,7 +402,10 @@ PointGFp PointGFp_Multi_Point_Precompute::multi_exp(const BigInt& z1,
       // This function is not intended to be const time
       if(z12)
          {
-         H.add_affine(m_M[z12-1], ws);
+         if(m_no_infinity)
+            H.add_affine(m_M[z12-1], ws);
+         else
+            H.add(m_M[z12-1], ws);
          }
       }
 

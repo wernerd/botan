@@ -8,7 +8,7 @@
 
 #if defined(BOTAN_HAS_X509_CERTIFICATES)
    #include <botan/x509path.h>
-   #include <botan/calendar.h>
+   #include <botan/internal/calendar.h>
 #endif
 
 #include <utility>
@@ -88,7 +88,7 @@ class Name_Constraint_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("x509_path_name_constraint", Name_Constraint_Tests);
+BOTAN_REGISTER_TEST("x509", "x509_path_name_constraint", Name_Constraint_Tests);
 
 #endif
 

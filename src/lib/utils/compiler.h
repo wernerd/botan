@@ -51,46 +51,19 @@
 #define BOTAN_TEST_API BOTAN_DLL
 
 /*
-* Define BOTAN_GCC_VERSION
-*/
-#if defined(__GNUC__) && !defined(__clang__)
-  #define BOTAN_GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__ * 10 + __GNUC_PATCHLEVEL__)
-#else
-  #define BOTAN_GCC_VERSION 0
-#endif
-
-/*
-* Define BOTAN_CLANG_VERSION
-*/
-#if defined(__clang__)
-  #define BOTAN_CLANG_VERSION (__clang_major__ * 10 + __clang_minor__)
-#else
-  #define BOTAN_CLANG_VERSION 0
-#endif
-
-/*
 * Define BOTAN_FUNC_ISA
 */
-#if (defined(__GNUC__) && !defined(__clang__)) || (BOTAN_CLANG_VERSION > 38)
+#if defined(__GNUC__) || defined(__clang__)
   #define BOTAN_FUNC_ISA(isa) __attribute__ ((target(isa)))
 #else
   #define BOTAN_FUNC_ISA(isa)
 #endif
 
 /*
-* Define BOTAN_WARN_UNUSED_RESULT
-*/
-#if defined(__GNUC__) || defined(__clang__)
-  #define BOTAN_WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
-#else
-  #define BOTAN_WARN_UNUSED_RESULT
-#endif
-
-/*
 * Define BOTAN_MALLOC_FN
 */
 #if defined(__ibmxl__)
-  // XLC pretends to be both Clang and GCC, but is neither
+  /* XLC pretends to be both Clang and GCC, but is neither */
   #define BOTAN_MALLOC_FN __attribute__ ((malloc))
 #elif defined(__GNUC__)
   #define BOTAN_MALLOC_FN __attribute__ ((malloc, alloc_size(1,2)))
@@ -103,30 +76,25 @@
 /*
 * Define BOTAN_DEPRECATED
 */
-#if !defined(BOTAN_NO_DEPRECATED_WARNINGS)
+#if !defined(BOTAN_NO_DEPRECATED_WARNINGS) && !defined(BOTAN_AMALGAMATION_H_)
 
-  #if defined(__clang__)
+  #if defined(__cplusplus)
+    #define BOTAN_DEPRECATED(msg) [[deprecated(msg)]]
+  #elif defined(__clang__) || defined(__GNUC__)
     #define BOTAN_DEPRECATED(msg) __attribute__ ((deprecated(msg)))
-    #define BOTAN_DEPRECATED_HEADER(hdr) _Pragma("message \"this header is deprecated\"")
-
-    #if !defined(BOTAN_IS_BEING_BUILT) && !defined(BOTAN_AMALGAMATION_H_)
-      #define BOTAN_FUTURE_INTERNAL_HEADER(hdr) _Pragma("message \"this header will be made internal in the future\"")
-    #endif
-
   #elif defined(_MSC_VER)
     #define BOTAN_DEPRECATED(msg) __declspec(deprecated(msg))
-    #define BOTAN_DEPRECATED_HEADER(hdr) __pragma(message("this header is deprecated"))
+  #endif
 
-    #if !defined(BOTAN_IS_BEING_BUILT) && !defined(BOTAN_AMALGAMATION_H_)
+  #if !defined(BOTAN_IS_BEING_BUILT)
+    #if defined(__clang__)
+      #define BOTAN_DEPRECATED_HEADER(hdr) _Pragma("message \"this header is deprecated\"")
+      #define BOTAN_FUTURE_INTERNAL_HEADER(hdr) _Pragma("message \"this header will be made internal in the future\"")
+    #elif defined(_MSC_VER)
+      #define BOTAN_DEPRECATED_HEADER(hdr) __pragma(message("this header is deprecated"))
       #define BOTAN_FUTURE_INTERNAL_HEADER(hdr) __pragma(message("this header will be made internal in the future"))
-    #endif
-
-  #elif defined(__GNUC__)
-    /* msg supported since GCC 4.5, earliest we support is 4.8 */
-    #define BOTAN_DEPRECATED(msg) __attribute__ ((deprecated(msg)))
-    #define BOTAN_DEPRECATED_HEADER(hdr) _Pragma("GCC warning \"this header is deprecated\"")
-
-    #if !defined(BOTAN_IS_BEING_BUILT) && !defined(BOTAN_AMALGAMATION_H_)
+    #elif defined(__GNUC__)
+      #define BOTAN_DEPRECATED_HEADER(hdr) _Pragma("GCC warning \"this header is deprecated\"")
       #define BOTAN_FUTURE_INTERNAL_HEADER(hdr) _Pragma("GCC warning \"this header will be made internal in the future\"")
     #endif
   #endif
@@ -143,60 +111,6 @@
 
 #if !defined(BOTAN_FUTURE_INTERNAL_HEADER)
   #define BOTAN_FUTURE_INTERNAL_HEADER(hdr)
-#endif
-
-/*
-* Define BOTAN_NORETURN
-*/
-#if !defined(BOTAN_NORETURN)
-
-  #if defined (__clang__) || defined (__GNUC__)
-    #define BOTAN_NORETURN __attribute__ ((__noreturn__))
-
-  #elif defined (_MSC_VER)
-    #define BOTAN_NORETURN __declspec(noreturn)
-
-  #else
-    #define BOTAN_NORETURN
-  #endif
-
-#endif
-
-/*
-* Define BOTAN_THREAD_LOCAL
-*/
-#if !defined(BOTAN_THREAD_LOCAL)
-
-  #if defined(BOTAN_TARGET_OS_HAS_THREADS) && defined(BOTAN_TARGET_OS_HAS_THREAD_LOCAL)
-    #define BOTAN_THREAD_LOCAL thread_local
-  #else
-    #define BOTAN_THREAD_LOCAL /**/
-  #endif
-
-#endif
-
-/*
-* Define BOTAN_IF_CONSTEXPR
-*/
-#if !defined(BOTAN_IF_CONSTEXPR)
-   #if __cplusplus >= 201703
-      #define BOTAN_IF_CONSTEXPR if constexpr
-   #else
-      #define BOTAN_IF_CONSTEXPR if
-   #endif
-#endif
-
-/*
-* Define BOTAN_PARALLEL_FOR
-*/
-#if !defined(BOTAN_PARALLEL_FOR)
-
-#if defined(BOTAN_TARGET_HAS_OPENMP)
-  #define BOTAN_PARALLEL_FOR _Pragma("omp parallel for") for
-#else
-  #define BOTAN_PARALLEL_FOR for
-#endif
-
 #endif
 
 /*
@@ -223,7 +137,7 @@
 
 #if defined(BOTAN_TARGET_HAS_OPENMP)
   #define BOTAN_PARALLEL_SIMD_FOR _Pragma("omp simd") for
-#elif defined(BOTAN_BUILD_COMPILER_IS_GCC) && (BOTAN_GCC_VERSION >= 490)
+#elif defined(BOTAN_BUILD_COMPILER_IS_GCC)
   #define BOTAN_PARALLEL_SIMD_FOR _Pragma("GCC ivdep") for
 #else
   #define BOTAN_PARALLEL_SIMD_FOR for

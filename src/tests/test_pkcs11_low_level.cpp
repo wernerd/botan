@@ -18,10 +18,7 @@
 
 #if defined(BOTAN_HAS_PKCS11)
    #include <botan/p11.h>
-#endif
-
-#if defined(BOTAN_HAS_DYNAMIC_LOADER)
-   #include <botan/dyn_load.h>
+   #include <botan/internal/dyn_load.h>
 #endif
 
 namespace Botan_Tests {
@@ -831,7 +828,7 @@ class LowLevelTests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-lowlevel", LowLevelTests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-lowlevel", LowLevelTests);
 
 #endif
 #endif

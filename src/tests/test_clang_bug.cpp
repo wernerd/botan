@@ -95,7 +95,7 @@ class Clang_Bug_41810 final : public Test
 
          try
             {
-            Botan::PKCS8::load_key(ds, Test::rng(), pw);
+            Botan::PKCS8::load_key(ds, pw);
             result.test_failure("load_key should have thrown due to wrong password");
             }
          catch(const std::exception&)
@@ -108,7 +108,7 @@ class Clang_Bug_41810 final : public Test
 
    };
 
-BOTAN_REGISTER_TEST("clang_bug", Clang_Bug_41810);
+BOTAN_REGISTER_TEST("misc", "clang_bug", Clang_Bug_41810);
 
 #endif // BOTAN_HAS_PUBLIC_KEY_CRYPTO
 

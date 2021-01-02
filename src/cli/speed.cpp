@@ -18,15 +18,14 @@
 
 // Always available:
 #include <botan/entropy_src.h>
-#include <botan/parsing.h>
-#include <botan/cpuid.h>
+#include <botan/internal/cpuid.h>
 #include <botan/internal/os_utils.h>
 #include <botan/internal/timer.h>
 #include <botan/version.h>
 
 #if defined(BOTAN_HAS_BIGINT)
    #include <botan/bigint.h>
-   #include <botan/divide.h>
+   #include <botan/internal/divide.h>
 #endif
 
 #if defined(BOTAN_HAS_BLOCK_CIPHER)
@@ -90,13 +89,13 @@
    #include <botan/pubkey.h>
    #include <botan/pk_algs.h>
    #include <botan/x509_key.h>
-   #include <botan/workfactor.h>
+   #include <botan/internal/workfactor.h>
 #endif
 
 #if defined(BOTAN_HAS_NUMBERTHEORY)
    #include <botan/numthry.h>
    #include <botan/reducer.h>
-   #include <botan/curve_nistp.h>
+   #include <botan/internal/curve_nistp.h>
    #include <botan/internal/primality.h>
 #endif
 
@@ -292,7 +291,7 @@ std::vector<size_t> unique_buffer_sizes(const std::string& cmdline_arg)
    const size_t MAX_BUF_SIZE = 64*1024*1024;
 
    std::set<size_t> buf;
-   for(std::string size_str : Botan::split_on(cmdline_arg, ','))
+   for(std::string size_str : Command::split_on(cmdline_arg, ','))
       {
       size_t x = 0;
       try
@@ -345,7 +344,6 @@ class Speed final : public Command
             "ARIA-256",
             "Blowfish",
             "CAST-128",
-            "CAST-256",
             "Camellia-128",
             "Camellia-192",
             "Camellia-256",
@@ -353,15 +351,12 @@ class Speed final : public Command
             "TripleDES",
             "GOST-28147-89",
             "IDEA",
-            "KASUMI",
-            "MISTY1",
             "Noekeon",
             "SHACAL2",
             "SM4",
             "Serpent",
             "Threefish-512",
             "Twofish",
-            "XTEA",
 
             /* Cipher modes */
             "AES-128/CBC",
@@ -396,7 +391,6 @@ class Speed final : public Command
             "RIPEMD-160",
             "Skein-512",
             "Blake2b",
-            "Tiger",
             "Whirlpool",
 
             /* MACs */
@@ -429,7 +423,7 @@ class Speed final : public Command
          {
          std::chrono::milliseconds msec(get_arg_sz("msec"));
          const std::string provider = get_arg("provider");
-         std::vector<std::string> ecc_groups = Botan::split_on(get_arg("ecc-groups"), ',');
+         std::vector<std::string> ecc_groups = Command::split_on(get_arg("ecc-groups"), ',');
          const std::string format = get_arg("format");
          const std::string clock_ratio = get_arg("cpu-clock-ratio");
          m_clock_speed = get_arg_sz("cpu-clock-speed");
@@ -479,9 +473,7 @@ class Speed final : public Command
 
          const std::vector<size_t> buf_sizes = unique_buffer_sizes(get_arg("buf-size"));
 
-         Botan::CPUID::initialize();
-
-         for(std::string cpuid_to_clear : Botan::split_on(get_arg("clear-cpuid"), ','))
+         for(std::string cpuid_to_clear : Command::split_on(get_arg("clear-cpuid"), ','))
             {
             auto bits = Botan::CPUID::bit_from_string(cpuid_to_clear);
             if(bits.empty())
@@ -1209,11 +1201,11 @@ class Speed final : public Command
 
       void bench_os2ecp(const std::vector<std::string>& groups, const std::chrono::milliseconds runtime)
          {
-         std::unique_ptr<Timer> uncmp_timer = make_timer("OS2ECP uncompressed");
-         std::unique_ptr<Timer> cmp_timer = make_timer("OS2ECP compressed");
-
          for(std::string group_name : groups)
             {
+            std::unique_ptr<Timer> uncmp_timer = make_timer("OS2ECP uncompressed " + group_name);
+            std::unique_ptr<Timer> cmp_timer = make_timer("OS2ECP compressed " + group_name);
+
             const Botan::EC_Group ec_group(group_name);
 
             while(uncmp_timer->under(runtime) && cmp_timer->under(runtime))
@@ -1358,7 +1350,7 @@ class Speed final : public Command
                y.randomize(rng(), q_bits);
 
                div_timer->start();
-               Botan::divide(x, y, q1, r1);
+               Botan::vartime_divide(x, y, q1, r1);
                div_timer->stop();
 
                ct_div_timer->start();
@@ -1397,7 +1389,7 @@ class Speed final : public Command
                x.randomize(rng(), n_bits);
 
                div_timer->start();
-               Botan::divide(x, ten, q1, r1);
+               Botan::vartime_divide(x, ten, q1, r1);
                div_timer->stop();
 
                ct_div_timer->start();
@@ -1672,9 +1664,9 @@ class Speed final : public Command
 
             if(dec_timer->under(msec))
                {
-               auto dec_pt = dec_timer->run([&]() { return dec.decrypt(ciphertext); });
+               const auto dec_pt = dec_timer->run([&]() { return dec.decrypt(ciphertext); });
 
-               if(dec_pt != plaintext) // sanity check
+               if(!(dec_pt == plaintext)) // sanity check
                   {
                   error_output() << "Bad roundtrip in PK encrypt/decrypt bench\n";
                   }

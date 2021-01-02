@@ -7,15 +7,15 @@
 */
 
 #include <botan/dsa.h>
-#include <botan/keypair.h>
+#include <botan/internal/keypair.h>
 #include <botan/reducer.h>
 #include <botan/rng.h>
-#include <botan/divide.h>
+#include <botan/internal/divide.h>
 #include <botan/internal/pk_ops_impl.h>
 
 #if defined(BOTAN_HAS_RFC6979_GENERATOR)
-  #include <botan/emsa.h>
-  #include <botan/rfc6979.h>
+  #include <botan/internal/emsa.h>
+  #include <botan/internal/rfc6979.h>
 #endif
 
 namespace Botan {
@@ -48,7 +48,7 @@ DSA_PrivateKey::DSA_PrivateKey(RandomNumberGenerator& rng,
 
 DSA_PrivateKey::DSA_PrivateKey(const AlgorithmIdentifier& alg_id,
                                const secure_vector<uint8_t>& key_bits) :
-   DL_Scheme_PrivateKey(alg_id, key_bits, DL_Group::ANSI_X9_57)
+   DL_Scheme_PrivateKey(alg_id, key_bits, DL_Group_Format::ANSI_X9_57)
    {
    m_y = m_group.power_g_p(m_x, m_group.q_bits());
    }
@@ -67,6 +67,11 @@ bool DSA_PrivateKey::check_key(RandomNumberGenerator& rng, bool strong) const
    return KeyPair::signature_consistency_check(rng, *this, "EMSA1(SHA-256)");
    }
 
+std::unique_ptr<Public_Key> DSA_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new DSA_PublicKey(get_group(), get_y()));
+   }
+
 namespace {
 
 /**
@@ -82,10 +87,6 @@ class DSA_Signature_Operation final : public PK_Ops::Signature_with_EMSA
          m_group(dsa.get_group()),
          m_x(dsa.get_x())
          {
-#if defined(BOTAN_HAS_RFC6979_GENERATOR)
-         m_rfc6979_hash = hash_for_emsa(emsa);
-#endif
-
          m_b = BigInt::random_integer(rng, 2, dsa.group_q());
          m_b_inv = m_group.inverse_mod_q(m_b);
          }
@@ -98,10 +99,6 @@ class DSA_Signature_Operation final : public PK_Ops::Signature_with_EMSA
    private:
       const DL_Group m_group;
       const BigInt& m_x;
-#if defined(BOTAN_HAS_RFC6979_GENERATOR)
-      std::string m_rfc6979_hash;
-#endif
-
       BigInt m_b, m_b_inv;
    };
 
@@ -118,7 +115,7 @@ DSA_Signature_Operation::raw_sign(const uint8_t msg[], size_t msg_len,
 
 #if defined(BOTAN_HAS_RFC6979_GENERATOR)
    BOTAN_UNUSED(rng);
-   const BigInt k = generate_rfc6979_nonce(m_x, q, m, m_rfc6979_hash);
+   const BigInt k = generate_rfc6979_nonce(m_x, q, m, this->hash_for_signature());
 #else
    const BigInt k = BigInt::random_integer(rng, 1, q);
 #endif

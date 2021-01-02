@@ -35,18 +35,6 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
      enum Sign { Negative = 0, Positive = 1 };
 
      /**
-     * DivideByZero Exception
-     *
-     * In a future release this exception will be removed and its usage
-     * replaced by Invalid_Argument
-     */
-     class BOTAN_PUBLIC_API(2,0) DivideByZero final : public Invalid_Argument
-        {
-        public:
-           DivideByZero() : Invalid_Argument("BigInt divide by zero") {}
-        };
-
-     /**
      * Create empty BigInt
      */
      BigInt() = default;
@@ -635,15 +623,6 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
      */
      void grow_to(size_t n) const { m_data.grow_to(n); }
 
-     /**
-     * Resize the vector to the minimum word size to hold the integer, or
-     * min_size words, whichever is larger
-     */
-     void BOTAN_DEPRECATED("Use resize if required") shrink_to_fit(size_t min_size = 0)
-        {
-        m_data.shrink_to_fit(min_size);
-        }
-
      void resize(size_t s) { m_data.resize(s); }
 
      /**
@@ -693,16 +672,6 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
         {
         binary_decode(buf.data(), buf.size());
         }
-
-     /**
-     * @param base the base to measure the size for
-     * @return size of this integer in base base
-     *
-     * Deprecated. This is only needed when using the `encode` and
-     * `encode_locked` functions, which are also deprecated.
-     */
-     BOTAN_DEPRECATED("See comments on declaration")
-     size_t encoded_size(Base base = Binary) const;
 
      /**
      * Place the value into out, zero-padding up to size words
@@ -787,16 +756,6 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
         }
 
      /**
-     * Encode the integer value from a BigInt to a byte array
-     * @param buf destination byte array for the encoded integer
-     * @param n the BigInt to use as integer source
-     */
-     static BOTAN_DEPRECATED("Use n.binary_encode") void encode(uint8_t buf[], const BigInt& n)
-        {
-        n.binary_encode(buf);
-        }
-
-     /**
      * Create a BigInt from an integer in a byte array
      * @param buf the binary value to load
      * @param length size of buf
@@ -817,46 +776,6 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
         {
         return BigInt(buf);
         }
-
-     /**
-     * Encode the integer value from a BigInt to a std::vector of bytes
-     * @param n the BigInt to use as integer source
-     * @param base number-base of resulting byte array representation
-     * @result secure_vector of bytes containing the integer with given base
-     *
-     * Deprecated. If you need Binary, call the version of encode that doesn't
-     * take a Base. If you need Hex or Decimal output, use to_hex_string or
-     * to_dec_string resp.
-     */
-     BOTAN_DEPRECATED("See comments on declaration")
-     static std::vector<uint8_t> encode(const BigInt& n, Base base);
-
-     /**
-     * Encode the integer value from a BigInt to a secure_vector of bytes
-     * @param n the BigInt to use as integer source
-     * @param base number-base of resulting byte array representation
-     * @result secure_vector of bytes containing the integer with given base
-     *
-     * Deprecated. If you need Binary, call the version of encode_locked that
-     * doesn't take a Base. If you need Hex or Decimal output, use to_hex_string
-     * or to_dec_string resp.
-     */
-     BOTAN_DEPRECATED("See comments on declaration")
-     static secure_vector<uint8_t> encode_locked(const BigInt& n,
-                                                 Base base);
-
-     /**
-     * Encode the integer value from a BigInt to a byte array
-     * @param buf destination byte array for the encoded integer
-     * value with given base
-     * @param n the BigInt to use as integer source
-     * @param base number-base of resulting byte array representation
-     *
-     * Deprecated. If you need Binary, call binary_encode. If you need
-     * Hex or Decimal output, use to_hex_string or to_dec_string resp.
-     */
-     BOTAN_DEPRECATED("See comments on declaration")
-     static void encode(uint8_t buf[], const BigInt& n, Base base);
 
      /**
      * Create a BigInt from an integer in a byte array
@@ -900,17 +819,6 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
      * @result a secure_vector<uint8_t> containing the concatenation of the two encoded BigInt
      */
      static secure_vector<uint8_t> encode_fixed_length_int_pair(const BigInt& n1, const BigInt& n2, size_t bytes);
-
-     /**
-     * Set output = vec[idx].m_reg in constant time
-     *
-     * All elements of vec must have the same size, and output must be
-     * pre-allocated with the same size.
-     */
-     static void BOTAN_DEPRECATED("No longer in use") const_time_lookup(
-        secure_vector<word>& output,
-        const std::vector<BigInt>& vec,
-        size_t idx);
 
    private:
 
@@ -1097,6 +1005,7 @@ BigInt BOTAN_PUBLIC_API(2,8) operator*(const BigInt& x, word y);
 inline BigInt operator*(word x, const BigInt& y) { return y*x; }
 
 BigInt BOTAN_PUBLIC_API(2,0) operator/(const BigInt& x, const BigInt& d);
+BigInt BOTAN_PUBLIC_API(2,0) operator/(const BigInt& x, word m);
 BigInt BOTAN_PUBLIC_API(2,0) operator%(const BigInt& x, const BigInt& m);
 word   BOTAN_PUBLIC_API(2,0) operator%(const BigInt& x, word m);
 BigInt BOTAN_PUBLIC_API(2,0) operator<<(const BigInt& x, size_t n);

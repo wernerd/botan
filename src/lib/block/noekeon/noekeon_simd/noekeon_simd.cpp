@@ -5,7 +5,7 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/noekeon.h>
+#include <botan/internal/noekeon.h>
 #include <botan/internal/simd_32.h>
 
 namespace Botan {
@@ -37,7 +37,7 @@ namespace Botan {
 #define NOK_SIMD_GAMMA(A0, A1, A2, A3)                                  \
    do                                                                   \
       {                                                                 \
-      A1 ^= A3.andc(~A2);                                               \
+      A1 ^= ~(A2 | A3);                                                 \
       A0 ^= A2 & A1;                                                    \
                                                                         \
       SIMD_4x32 T = A3;                                                 \
@@ -46,7 +46,7 @@ namespace Botan {
                                                                         \
       A2 ^= A0 ^ A1 ^ A3;                                               \
                                                                         \
-      A1 ^= A3.andc(~A2);                                               \
+      A1 ^= ~(A2 | A3);                                                 \
       A0 ^= A2 & A1;                                                    \
       } while(0)
 

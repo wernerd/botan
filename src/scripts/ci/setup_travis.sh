@@ -7,21 +7,13 @@
 
 command -v shellcheck > /dev/null && shellcheck "$0" # Run shellcheck on this if available
 
-set -ev
+set -ex
 
 if [ "$TRAVIS_OS_NAME" = "linux" ]; then
 
     if [ "$TARGET" = "valgrind" ]; then
         sudo apt-get -qq update
         sudo apt-get install valgrind
-
-    elif [ "$TARGET" = "gcc4.8" ]; then
-        sudo apt-get -qq update
-        sudo apt-get install g++-4.8
-
-    elif [ "$TARGET" = "clang8" ]; then
-        sudo apt-get -qq update
-        sudo apt-get install clang-8
 
     elif [ "$TARGET" = "cross-i386" ]; then
         sudo apt-get -qq update
@@ -34,23 +26,8 @@ if [ "$TRAVIS_OS_NAME" = "linux" ]; then
     elif [ "$TARGET" = "cross-arm32" ]; then
         sudo dpkg --add-architecture armhf
         sudo apt-get -qq update
-        sudo apt-get install g++-arm-linux-gnueabihf libc6:armhf libstdc++6:armhf
-
-    elif [ "$TARGET" = "cross-arm64" ]; then
-        sudo apt-get -qq update
-        sudo apt-get install qemu-user g++-aarch64-linux-gnu
-
-    elif [ "$TARGET" = "cross-ppc32" ]; then
-        sudo apt-get -qq update
-        sudo apt-get install qemu-user g++-powerpc-linux-gnu
-
-    elif [ "$TARGET" = "cross-ppc64" ]; then
-        sudo apt-get -qq update
-        sudo apt-get install qemu-user g++-powerpc64le-linux-gnu
-
-    elif [ "$TARGET" = "cross-mips64" ]; then
-        sudo apt-get -qq update
-        sudo apt-get install qemu-user g++-mips64-linux-gnuabi64
+        sudo apt-get install g++-arm-linux-gnueabihf
+        sudo apt-get install -o APT::Immediate-Configure=0 libc6:armhf libstdc++6:armhf
 
     elif [ "$TARGET" = "cross-android-arm32" ] || [ "$TARGET" = "cross-android-arm64" ]; then
         wget -nv https://dl.google.com/android/repository/"$ANDROID_NDK"-linux-x86_64.zip
@@ -67,23 +44,9 @@ if [ "$TRAVIS_OS_NAME" = "linux" ]; then
         sudo apt-get -qq update
         sudo apt-get install pylint
 
-    elif [ "$TARGET" = "coverage" ]; then
-        # need updated softhsm to avoid https://github.com/opendnssec/SoftHSMv2/issues/239
-        sudo add-apt-repository -y ppa:pkg-opendnssec/ppa
-        sudo apt-get -qq update
-        sudo apt-get install softhsm2 trousers libtspi-dev lcov python-coverage libboost-all-dev golang-1.10 gdb
-        pip install --user codecov
-        git clone --depth 1 --branch runner-changes-golang1.10 https://github.com/randombit/boringssl.git
-
-        sudo chgrp -R "$(id -g)" /var/lib/softhsm/ /etc/softhsm
-        sudo mkdir /var/lib/softhsm/tokens
-        sudo chmod g+w /var/lib/softhsm/tokens
-
-        softhsm2-util --init-token --free --label test --pin 123456 --so-pin 12345678
-
     elif [ "$TARGET" = "docs" ]; then
         sudo apt-get -qq update
-        sudo apt-get install doxygen python-docutils python-sphinx
+        sudo apt-get install doxygen python-docutils python3-sphinx
     fi
 
 elif [ "$TRAVIS_OS_NAME" = "osx" ]; then

@@ -32,7 +32,8 @@ class EC_Group_Data final
                     const BigInt& g_y,
                     const BigInt& order,
                     const BigInt& cofactor,
-                    const OID& oid) :
+                    const OID& oid,
+                    EC_Group_Source source) :
          m_curve(p, a, b),
          m_base_point(m_curve, g_x, g_y),
          m_g_x(g_x),
@@ -45,7 +46,8 @@ class EC_Group_Data final
          m_p_bits(p.bits()),
          m_order_bits(order.bits()),
          m_a_is_minus_3(a == p - 3),
-         m_a_is_zero(a.is_zero())
+         m_a_is_zero(a.is_zero()),
+         m_source(source)
          {
          }
 
@@ -118,6 +120,8 @@ class EC_Group_Data final
          return m_base_mult.mul(k, rng, m_order, ws);
          }
 
+      EC_Group_Source source() const { return m_source; }
+
    private:
       CurveGFp m_curve;
       PointGFp m_base_point;
@@ -133,6 +137,7 @@ class EC_Group_Data final
       size_t m_order_bits;
       bool m_a_is_minus_3;
       bool m_a_is_zero;
+      EC_Group_Source m_source;
    };
 
 class EC_Group_Data_Map final
@@ -178,7 +183,8 @@ class EC_Group_Data_Map final
                                                       const BigInt& g_y,
                                                       const BigInt& order,
                                                       const BigInt& cofactor,
-                                                      const OID& oid)
+                                                      const OID& oid,
+                                                      EC_Group_Source source)
          {
          lock_guard_type<mutex_type> lock(m_mutex);
 
@@ -235,7 +241,7 @@ class EC_Group_Data_Map final
 
          // Not found or no OID, add data and return
          std::shared_ptr<EC_Group_Data> d =
-            std::make_shared<EC_Group_Data>(p, a, b, g_x, g_y, order, cofactor, oid);
+            std::make_shared<EC_Group_Data>(p, a, b, g_x, g_y, order, cofactor, oid, source);
 
          m_registered_curves.push_back(d);
          return d;
@@ -283,45 +289,46 @@ EC_Group::load_EC_group_info(const char* p_str,
    const BigInt order(order_str);
    const BigInt cofactor(1); // implicit
 
-   return std::make_shared<EC_Group_Data>(p, a, b, g_x, g_y, order, cofactor, oid);
+   return std::make_shared<EC_Group_Data>(p, a, b, g_x, g_y, order, cofactor, oid, EC_Group_Source::Builtin);
    }
 
 //static
-std::shared_ptr<EC_Group_Data> EC_Group::BER_decode_EC_group(const uint8_t bits[], size_t len)
+std::shared_ptr<EC_Group_Data> EC_Group::BER_decode_EC_group(const uint8_t bits[], size_t len,
+                                                             EC_Group_Source source)
    {
    BER_Decoder ber(bits, len);
    BER_Object obj = ber.get_next_object();
 
-   if(obj.type() == NULL_TAG)
+   if(obj.type() == ASN1_Tag::NULL_TAG)
       {
       throw Decoding_Error("Cannot handle ImplicitCA ECC parameters");
       }
-   else if(obj.type() == OBJECT_ID)
+   else if(obj.type() == ASN1_Tag::OBJECT_ID)
       {
       OID dom_par_oid;
       BER_Decoder(bits, len).decode(dom_par_oid);
       return ec_group_data().lookup(dom_par_oid);
       }
-   else if(obj.type() == SEQUENCE)
+   else if(obj.type() == ASN1_Tag::SEQUENCE)
       {
       BigInt p, a, b, order, cofactor;
       std::vector<uint8_t> base_pt;
       std::vector<uint8_t> seed;
 
       BER_Decoder(bits, len)
-         .start_cons(SEQUENCE)
+         .start_sequence()
            .decode_and_check<size_t>(1, "Unknown ECC param version code")
-           .start_cons(SEQUENCE)
+           .start_sequence()
             .decode_and_check(OID("1.2.840.10045.1.1"),
                               "Only prime ECC fields supported")
              .decode(p)
            .end_cons()
-           .start_cons(SEQUENCE)
+           .start_sequence()
              .decode_octet_string_bigint(a)
              .decode_octet_string_bigint(b)
-             .decode_optional_string(seed, BIT_STRING, BIT_STRING)
+             .decode_optional_string(seed, ASN1_Tag::BIT_STRING, ASN1_Tag::BIT_STRING)
            .end_cons()
-           .decode(base_pt, OCTET_STRING)
+           .decode(base_pt, ASN1_Tag::OCTET_STRING)
            .decode(order)
            .decode(cofactor)
          .end_cons()
@@ -344,7 +351,8 @@ std::shared_ptr<EC_Group_Data> EC_Group::BER_decode_EC_group(const uint8_t bits[
 
       std::pair<BigInt, BigInt> base_xy = Botan::OS2ECP(base_pt.data(), base_pt.size(), p, a, b);
 
-      return ec_group_data().lookup_or_create(p, a, b, base_xy.first, base_xy.second, order, cofactor, OID());
+      return ec_group_data().lookup_or_create(p, a, b, base_xy.first, base_xy.second,
+                                              order, cofactor, OID(), source);
       }
    else
       {
@@ -389,7 +397,7 @@ EC_Group::EC_Group(const std::string& str)
          {
          // OK try it as PEM ...
          secure_vector<uint8_t> ber = PEM_Code::decode_check_label(str, "EC PARAMETERS");
-         this->m_data = BER_decode_EC_group(ber.data(), ber.size());
+         this->m_data = BER_decode_EC_group(ber.data(), ber.size(), EC_Group_Source::ExternalSource);
          }
       }
 
@@ -398,17 +406,10 @@ EC_Group::EC_Group(const std::string& str)
    }
 
 //static
-std::string EC_Group::PEM_for_named_group(const std::string& name)
+EC_Group EC_Group::EC_Group_from_PEM(const std::string& pem)
    {
-   try
-      {
-      EC_Group group(name);
-      return group.PEM_encode();
-      }
-   catch(...)
-      {
-      return "";
-      }
+   const auto ber = PEM_Code::decode_check_label(pem, "EC PARAMETERS");
+   return EC_Group(ber.data(), ber.size());
    }
 
 EC_Group::EC_Group(const BigInt& p,
@@ -420,12 +421,13 @@ EC_Group::EC_Group(const BigInt& p,
                    const BigInt& cofactor,
                    const OID& oid)
    {
-   m_data = ec_group_data().lookup_or_create(p, a, b, base_x, base_y, order, cofactor, oid);
+   m_data = ec_group_data().lookup_or_create(p, a, b, base_x, base_y, order, cofactor, oid,
+                                             EC_Group_Source::ExternalSource);
    }
 
-EC_Group::EC_Group(const std::vector<uint8_t>& ber)
+EC_Group::EC_Group(const uint8_t ber[], size_t ber_len)
    {
-   m_data = BER_decode_EC_group(ber.data(), ber.size());
+   m_data = BER_decode_EC_group(ber, ber_len, EC_Group_Source::ExternalSource);
    }
 
 const EC_Group_Data& EC_Group::data() const
@@ -433,11 +435,6 @@ const EC_Group_Data& EC_Group::data() const
    if(m_data == nullptr)
       throw Invalid_State("EC_Group uninitialized");
    return *m_data;
-   }
-
-const CurveGFp& EC_Group::get_curve() const
-   {
-   return data().curve();
    }
 
 bool EC_Group::a_is_minus_3() const
@@ -540,6 +537,11 @@ const OID& EC_Group::get_curve_oid() const
    return data().oid();
    }
 
+EC_Group_Source EC_Group::source() const
+   {
+   return data().source();
+   }
+
 size_t EC_Group::point_size(PointGFp::Compression_Type format) const
    {
    // Hybrid and standard format are (x,y), compressed is y, +1 format byte
@@ -610,31 +612,31 @@ EC_Group::DER_encode(EC_Group_Encoding form) const
 
    DER_Encoder der(output);
 
-   if(form == EC_DOMPAR_ENC_EXPLICIT)
+   if(form == EC_Group_Encoding::Explicit)
       {
       const size_t ecpVers1 = 1;
       const OID curve_type("1.2.840.10045.1.1"); // prime field
 
       const size_t p_bytes = get_p_bytes();
 
-      der.start_cons(SEQUENCE)
+      der.start_sequence()
             .encode(ecpVers1)
-            .start_cons(SEQUENCE)
+            .start_sequence()
                .encode(curve_type)
                .encode(get_p())
             .end_cons()
-            .start_cons(SEQUENCE)
+            .start_sequence()
                .encode(BigInt::encode_1363(get_a(), p_bytes),
-                       OCTET_STRING)
+                       ASN1_Tag::OCTET_STRING)
                .encode(BigInt::encode_1363(get_b(), p_bytes),
-                       OCTET_STRING)
+                       ASN1_Tag::OCTET_STRING)
             .end_cons()
-              .encode(get_base_point().encode(PointGFp::UNCOMPRESSED), OCTET_STRING)
+              .encode(get_base_point().encode(PointGFp::UNCOMPRESSED), ASN1_Tag::OCTET_STRING)
             .encode(get_order())
             .encode(get_cofactor())
          .end_cons();
       }
-   else if(form == EC_DOMPAR_ENC_OID)
+   else if(form == EC_Group_Encoding::NamedCurve)
       {
       const OID oid = get_curve_oid();
       if(oid.empty())
@@ -643,7 +645,7 @@ EC_Group::DER_encode(EC_Group_Encoding form) const
          }
       der.encode(oid);
       }
-   else if(form == EC_DOMPAR_ENC_IMPLICITCA)
+   else if(form == EC_Group_Encoding::ImplicitCA)
       {
       der.encode_null();
       }
@@ -657,7 +659,7 @@ EC_Group::DER_encode(EC_Group_Encoding form) const
 
 std::string EC_Group::PEM_encode() const
    {
-   const std::vector<uint8_t> der = DER_encode(EC_DOMPAR_ENC_EXPLICIT);
+   const std::vector<uint8_t> der = DER_encode(EC_Group_Encoding::Explicit);
    return PEM_Code::encode(der, "EC PARAMETERS");
    }
 
@@ -666,15 +668,13 @@ bool EC_Group::operator==(const EC_Group& other) const
    if(m_data == other.m_data)
       return true; // same shared rep
 
-   /*
-   * No point comparing order/cofactor as they are uniquely determined
-   * by the curve equation (p,a,b) and the base point.
-   */
    return (get_p() == other.get_p() &&
            get_a() == other.get_a() &&
            get_b() == other.get_b() &&
            get_g_x() == other.get_g_x() &&
-           get_g_y() == other.get_g_y());
+           get_g_y() == other.get_g_y() &&
+           get_order() == other.get_order() &&
+           get_cofactor() == other.get_cofactor());
    }
 
 bool EC_Group::verify_public_element(const PointGFp& point) const
@@ -701,29 +701,37 @@ bool EC_Group::verify_public_element(const PointGFp& point) const
    }
 
 bool EC_Group::verify_group(RandomNumberGenerator& rng,
-                            bool) const
+                            bool strong) const
    {
+   const bool is_builtin = source() == EC_Group_Source::Builtin;
+
+   if(is_builtin && !strong)
+      return true;
+
    const BigInt& p = get_p();
    const BigInt& a = get_a();
    const BigInt& b = get_b();
    const BigInt& order = get_order();
    const PointGFp& base_point = get_base_point();
 
+   if(p <= 3 || order <= 0)
+      return false;
    if(a < 0 || a >= p)
       return false;
    if(b <= 0 || b >= p)
       return false;
-   if(order <= 0)
-      return false;
+
+   const size_t test_prob = 128;
+   const bool is_randomly_generated = is_builtin;
 
    //check if field modulus is prime
-   if(!is_prime(p, rng, 128))
+   if(!is_prime(p, rng, test_prob, is_randomly_generated))
       {
       return false;
       }
 
    //check if order is prime
-   if(!is_prime(order, rng, 128))
+   if(!is_prime(order, rng, test_prob, is_randomly_generated))
       {
       return false;
       }

@@ -11,7 +11,7 @@
 #endif
 
 #if defined(BOTAN_HAS_HKDF)
-   #include <botan/hkdf.h>
+   #include <botan/internal/hkdf.h>
    #include <botan/hash.h>
 #endif
 
@@ -55,7 +55,7 @@ class KDF_KAT_Tests final : public Text_Based_Test
 
    };
 
-BOTAN_REGISTER_TEST("kdf", KDF_KAT_Tests);
+BOTAN_REGISTER_TEST("kdf", "kdf", KDF_KAT_Tests);
 
 #endif
 
@@ -97,7 +97,7 @@ class HKDF_Expand_Label_Tests final : public Text_Based_Test
 
    };
 
-BOTAN_REGISTER_TEST("hkdf_expand_label", HKDF_Expand_Label_Tests);
+BOTAN_REGISTER_TEST("kdf", "hkdf_expand_label", HKDF_Expand_Label_Tests);
 
 #endif
 

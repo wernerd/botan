@@ -5,10 +5,10 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/x509_dn.h>
+#include <botan/pkix_types.h>
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 #include <botan/internal/stl_util.h>
 #include <botan/oids.h>
 #include <ostream>
@@ -235,12 +235,20 @@ bool operator<(const X509_DN& dn1, const X509_DN& dn2)
    return false;
    }
 
+std::vector<uint8_t> X509_DN::DER_encode() const
+   {
+   std::vector<uint8_t> result;
+   DER_Encoder der(result);
+   this->encode_into(der);
+   return result;
+   }
+
 /*
 * DER encode a DistinguishedName
 */
 void X509_DN::encode_into(DER_Encoder& der) const
    {
-   der.start_cons(SEQUENCE);
+   der.start_sequence();
 
    if(!m_dn_bits.empty())
       {
@@ -254,8 +262,8 @@ void X509_DN::encode_into(DER_Encoder& der) const
       {
       for(const auto& dn : m_rdn)
          {
-         der.start_cons(SET)
-            .start_cons(SEQUENCE)
+         der.start_cons(ASN1_Tag::SET)
+            .start_sequence()
             .encode(dn.first)
             .encode(dn.second)
             .end_cons()
@@ -273,22 +281,24 @@ void X509_DN::decode_from(BER_Decoder& source)
    {
    std::vector<uint8_t> bits;
 
-   source.start_cons(SEQUENCE)
+   source.start_sequence()
       .raw_bytes(bits)
    .end_cons();
 
    BER_Decoder sequence(bits);
 
+   m_rdn.clear();
+
    while(sequence.more_items())
       {
-      BER_Decoder rdn = sequence.start_cons(SET);
+      BER_Decoder rdn = sequence.start_cons(ASN1_Tag::SET);
 
       while(rdn.more_items())
          {
          OID oid;
          ASN1_String str;
 
-         rdn.start_cons(SEQUENCE)
+         rdn.start_sequence()
             .decode(oid)
             .decode(str) // TODO support Any
             .end_cons().verify_end("Invalid X509_DN, data follows RDN");
@@ -297,6 +307,7 @@ void X509_DN::decode_from(BER_Decoder& source)
          }
       }
 
+   // Have to assign last as add_attribute zaps m_dn_bits
    m_dn_bits = bits;
    }
 

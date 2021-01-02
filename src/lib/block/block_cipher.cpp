@@ -6,92 +6,75 @@
 */
 
 #include <botan/block_cipher.h>
-#include <botan/scan_name.h>
+#include <botan/internal/scan_name.h>
 #include <botan/exceptn.h>
 
 #if defined(BOTAN_HAS_AES)
-  #include <botan/aes.h>
+  #include <botan/internal/aes.h>
 #endif
 
 #if defined(BOTAN_HAS_ARIA)
-  #include <botan/aria.h>
+  #include <botan/internal/aria.h>
 #endif
 
 #if defined(BOTAN_HAS_BLOWFISH)
-  #include <botan/blowfish.h>
+  #include <botan/internal/blowfish.h>
 #endif
 
 #if defined(BOTAN_HAS_CAMELLIA)
-  #include <botan/camellia.h>
+  #include <botan/internal/camellia.h>
 #endif
 
 #if defined(BOTAN_HAS_CAST_128)
-  #include <botan/cast128.h>
-#endif
-
-#if defined(BOTAN_HAS_CAST_256)
-  #include <botan/cast256.h>
+  #include <botan/internal/cast128.h>
 #endif
 
 #if defined(BOTAN_HAS_CASCADE)
-  #include <botan/cascade.h>
+  #include <botan/internal/cascade.h>
 #endif
 
 #if defined(BOTAN_HAS_DES)
-  #include <botan/des.h>
-  #include <botan/desx.h>
+  #include <botan/internal/des.h>
 #endif
 
 #if defined(BOTAN_HAS_GOST_28147_89)
-  #include <botan/gost_28147.h>
+  #include <botan/internal/gost_28147.h>
 #endif
 
 #if defined(BOTAN_HAS_IDEA)
-  #include <botan/idea.h>
-#endif
-
-#if defined(BOTAN_HAS_KASUMI)
-  #include <botan/kasumi.h>
+  #include <botan/internal/idea.h>
 #endif
 
 #if defined(BOTAN_HAS_LION)
-  #include <botan/lion.h>
-#endif
-
-#if defined(BOTAN_HAS_MISTY1)
-  #include <botan/misty1.h>
+  #include <botan/internal/lion.h>
 #endif
 
 #if defined(BOTAN_HAS_NOEKEON)
-  #include <botan/noekeon.h>
+  #include <botan/internal/noekeon.h>
 #endif
 
 #if defined(BOTAN_HAS_SEED)
-  #include <botan/seed.h>
+  #include <botan/internal/seed.h>
 #endif
 
 #if defined(BOTAN_HAS_SERPENT)
-  #include <botan/serpent.h>
+  #include <botan/internal/serpent.h>
 #endif
 
 #if defined(BOTAN_HAS_SHACAL2)
-  #include <botan/shacal2.h>
+  #include <botan/internal/shacal2.h>
 #endif
 
 #if defined(BOTAN_HAS_SM4)
-  #include <botan/sm4.h>
+  #include <botan/internal/sm4.h>
 #endif
 
 #if defined(BOTAN_HAS_TWOFISH)
-  #include <botan/twofish.h>
+  #include <botan/internal/twofish.h>
 #endif
 
 #if defined(BOTAN_HAS_THREEFISH_512)
-  #include <botan/threefish_512.h>
-#endif
-
-#if defined(BOTAN_HAS_XTEA)
-  #include <botan/xtea.h>
+  #include <botan/internal/threefish_512.h>
 #endif
 
 #if defined(BOTAN_HAS_OPENSSL)
@@ -229,11 +212,6 @@ BlockCipher::create(const std::string& algo,
       return std::unique_ptr<BlockCipher>(new DES);
       }
 
-   if(algo == "DESX")
-      {
-      return std::unique_ptr<BlockCipher>(new DESX);
-      }
-
    if(algo == "TripleDES" || algo == "3DES" || algo == "DES-EDE")
       {
       return std::unique_ptr<BlockCipher>(new TripleDES);
@@ -254,31 +232,10 @@ BlockCipher::create(const std::string& algo,
       }
 #endif
 
-#if defined(BOTAN_HAS_CAST_256)
-   if(algo == "CAST-256")
-      {
-      return std::unique_ptr<BlockCipher>(new CAST_256);
-      }
-#endif
-
 #if defined(BOTAN_HAS_IDEA)
    if(algo == "IDEA")
       {
       return std::unique_ptr<BlockCipher>(new IDEA);
-      }
-#endif
-
-#if defined(BOTAN_HAS_KASUMI)
-   if(algo == "KASUMI")
-      {
-      return std::unique_ptr<BlockCipher>(new KASUMI);
-      }
-#endif
-
-#if defined(BOTAN_HAS_MISTY1)
-   if(algo == "MISTY1")
-      {
-      return std::unique_ptr<BlockCipher>(new MISTY1);
       }
 #endif
 
@@ -293,13 +250,6 @@ BlockCipher::create(const std::string& algo,
    if(algo == "SM4")
       {
       return std::unique_ptr<BlockCipher>(new SM4);
-      }
-#endif
-
-#if defined(BOTAN_HAS_XTEA)
-   if(algo == "XTEA")
-      {
-      return std::unique_ptr<BlockCipher>(new XTEA);
       }
 #endif
 

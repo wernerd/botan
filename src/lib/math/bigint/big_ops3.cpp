@@ -7,7 +7,7 @@
 */
 
 #include <botan/bigint.h>
-#include <botan/divide.h>
+#include <botan/internal/divide.h>
 #include <botan/internal/mp_core.h>
 #include <botan/internal/bit_ops.h>
 #include <algorithm>
@@ -91,11 +91,37 @@ BigInt operator*(const BigInt& x, word y)
 */
 BigInt operator/(const BigInt& x, const BigInt& y)
    {
-   if(y.sig_words() == 1 && is_power_of_2(y.word_at(0)))
-      return (x >> (y.bits() - 1));
+   if(y.sig_words() == 1)
+      {
+      return x / y.word_at(0);
+      }
 
    BigInt q, r;
-   divide(x, y, q, r);
+   vartime_divide(x, y, q, r);
+   return q;
+   }
+
+/*
+* Division Operator
+*/
+BigInt operator/(const BigInt& x, word y)
+   {
+   if(y == 0)
+      throw Invalid_Argument("BigInt::operator/ divide by zero");
+   else if(y == 1)
+      return x;
+   else if(y == 2)
+      return (x >> 1);
+   else if(y <= 255)
+      {
+      BigInt q;
+      uint8_t r;
+      ct_divide_u8(x, static_cast<uint8_t>(y), q, r);
+      return q;
+      }
+
+   BigInt q, r;
+   vartime_divide(x, y, q, r);
    return q;
    }
 
@@ -105,14 +131,19 @@ BigInt operator/(const BigInt& x, const BigInt& y)
 BigInt operator%(const BigInt& n, const BigInt& mod)
    {
    if(mod.is_zero())
-      throw BigInt::DivideByZero();
+      throw Invalid_Argument("BigInt::operator% divide by zero");
    if(mod.is_negative())
-      throw Invalid_Argument("BigInt::operator%: modulus must be > 0");
+      throw Invalid_Argument("BigInt::operator% modulus must be > 0");
    if(n.is_positive() && mod.is_positive() && n < mod)
       return n;
 
+   if(mod.sig_words() == 1)
+      {
+      return n % mod.word_at(0);
+      }
+
    BigInt q, r;
-   divide(n, mod, q, r);
+   vartime_divide(n, mod, q, r);
    return r;
    }
 
@@ -122,7 +153,7 @@ BigInt operator%(const BigInt& n, const BigInt& mod)
 word operator%(const BigInt& n, word mod)
    {
    if(mod == 0)
-      throw BigInt::DivideByZero();
+      throw Invalid_Argument("BigInt::operator% divide by zero");
 
    if(mod == 1)
       return 0;

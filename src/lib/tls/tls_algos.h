@@ -20,35 +20,29 @@ namespace TLS {
 enum class Cipher_Algo {
    CHACHA20_POLY1305,
 
-   AES_128_CBC_HMAC_SHA1 = 100,
-   AES_128_CBC_HMAC_SHA256,
-   AES_128_CCM,
-   AES_128_CCM_8,
    AES_128_GCM,
-   AES_128_OCB,
-
-   AES_256_CBC_HMAC_SHA1 = 200,
-   AES_256_CBC_HMAC_SHA256,
-   AES_256_CBC_HMAC_SHA384,
-   AES_256_CCM,
-   AES_256_CCM_8,
    AES_256_GCM,
+
    AES_256_OCB,
 
-   CAMELLIA_128_CBC_HMAC_SHA1 = 300,
-   CAMELLIA_128_CBC_HMAC_SHA256,
    CAMELLIA_128_GCM,
-
-   CAMELLIA_256_CBC_HMAC_SHA1 = 400,
-   CAMELLIA_256_CBC_HMAC_SHA256,
-   CAMELLIA_256_CBC_HMAC_SHA384,
    CAMELLIA_256_GCM,
 
-   ARIA_128_GCM = 500,
+   ARIA_128_GCM,
    ARIA_256_GCM,
 
-   DES_EDE_CBC_HMAC_SHA1 = 1000,
-   SEED_CBC_HMAC_SHA1,
+   AES_128_CCM,
+   AES_256_CCM,
+   AES_128_CCM_8,
+   AES_256_CCM_8,
+
+   AES_128_CBC_HMAC_SHA1,
+   AES_128_CBC_HMAC_SHA256,
+   AES_256_CBC_HMAC_SHA1,
+   AES_256_CBC_HMAC_SHA256,
+   AES_256_CBC_HMAC_SHA384,
+
+   DES_EDE_CBC_HMAC_SHA1,
 };
 
 enum class KDF_Algo {
@@ -69,12 +63,10 @@ enum class Nonce_Format {
 // TODO this should include hash etc as in TLS v1.3
 enum class Auth_Method {
    RSA,
-   DSA,
    ECDSA,
 
    // These are placed outside the encodable range
    IMPLICIT = 0x10000,
-   ANONYMOUS
 };
 
 std::string BOTAN_TEST_API auth_method_to_string(Auth_Method method);
@@ -90,11 +82,6 @@ enum class Signature_Scheme : uint16_t {
    RSA_PKCS1_SHA256 = 0x0401,
    RSA_PKCS1_SHA384 = 0x0501,
    RSA_PKCS1_SHA512 = 0x0601,
-
-   DSA_SHA1   = 0x0202,
-   DSA_SHA256 = 0x0402,
-   DSA_SHA384 = 0x0502,
-   DSA_SHA512 = 0x0602,
 
    ECDSA_SHA1   = 0x0203,
    ECDSA_SHA256 = 0x0403,
@@ -148,9 +135,7 @@ enum class Kex_Algo {
    DH,
    ECDH,
    CECPQ1,
-   SRP_SHA,
    PSK,
-   DHE_PSK,
    ECDHE_PSK,
 };
 
@@ -160,7 +145,6 @@ Kex_Algo BOTAN_TEST_API kex_method_from_string(const std::string& str);
 inline bool key_exchange_is_psk(Kex_Algo m)
    {
    return (m == Kex_Algo::PSK ||
-           m == Kex_Algo::DHE_PSK ||
            m == Kex_Algo::ECDHE_PSK);
    }
 

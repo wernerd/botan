@@ -7,12 +7,14 @@ posix_mlock
 clock_gettime
 dev_random
 proc_fs
+getentropy
 
 atomics
 threads
 thread_local
 sockets
 filesystem
+setppriv
 </target_features>
 
 <aliases>

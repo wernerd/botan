@@ -1,6 +1,6 @@
 /*
 * DES
-* (C) 1999-2008,2018 Jack Lloyd
+* (C) 1999-2008,2018,2020 Jack Lloyd
 *
 * Based on a public domain implemenation by Phil Karn (who in turn
 * credited Richard Outerbridge and Jim Gillogly)
@@ -8,13 +8,111 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/des.h>
-#include <botan/loadstor.h>
-#include <botan/rotate.h>
+#include <botan/internal/des.h>
+#include <botan/internal/loadstor.h>
+#include <botan/internal/rotate.h>
+#include <botan/internal/cpuid.h>
 
 namespace Botan {
 
 namespace {
+
+alignas(256) const uint32_t DES_SPBOX[64*8] = {
+   0x01010400, 0x00000000, 0x00010000, 0x01010404, 0x01010004, 0x00010404,
+   0x00000004, 0x00010000, 0x00000400, 0x01010400, 0x01010404, 0x00000400,
+   0x01000404, 0x01010004, 0x01000000, 0x00000004, 0x00000404, 0x01000400,
+   0x01000400, 0x00010400, 0x00010400, 0x01010000, 0x01010000, 0x01000404,
+   0x00010004, 0x01000004, 0x01000004, 0x00010004, 0x00000000, 0x00000404,
+   0x00010404, 0x01000000, 0x00010000, 0x01010404, 0x00000004, 0x01010000,
+   0x01010400, 0x01000000, 0x01000000, 0x00000400, 0x01010004, 0x00010000,
+   0x00010400, 0x01000004, 0x00000400, 0x00000004, 0x01000404, 0x00010404,
+   0x01010404, 0x00010004, 0x01010000, 0x01000404, 0x01000004, 0x00000404,
+   0x00010404, 0x01010400, 0x00000404, 0x01000400, 0x01000400, 0x00000000,
+   0x00010004, 0x00010400, 0x00000000, 0x01010004,
+
+   0x80108020, 0x80008000, 0x00008000, 0x00108020, 0x00100000, 0x00000020,
+   0x80100020, 0x80008020, 0x80000020, 0x80108020, 0x80108000, 0x80000000,
+   0x80008000, 0x00100000, 0x00000020, 0x80100020, 0x00108000, 0x00100020,
+   0x80008020, 0x00000000, 0x80000000, 0x00008000, 0x00108020, 0x80100000,
+   0x00100020, 0x80000020, 0x00000000, 0x00108000, 0x00008020, 0x80108000,
+   0x80100000, 0x00008020, 0x00000000, 0x00108020, 0x80100020, 0x00100000,
+   0x80008020, 0x80100000, 0x80108000, 0x00008000, 0x80100000, 0x80008000,
+   0x00000020, 0x80108020, 0x00108020, 0x00000020, 0x00008000, 0x80000000,
+   0x00008020, 0x80108000, 0x00100000, 0x80000020, 0x00100020, 0x80008020,
+   0x80000020, 0x00100020, 0x00108000, 0x00000000, 0x80008000, 0x00008020,
+   0x80000000, 0x80100020, 0x80108020, 0x00108000,
+
+   0x00000208, 0x08020200, 0x00000000, 0x08020008, 0x08000200, 0x00000000,
+   0x00020208, 0x08000200, 0x00020008, 0x08000008, 0x08000008, 0x00020000,
+   0x08020208, 0x00020008, 0x08020000, 0x00000208, 0x08000000, 0x00000008,
+   0x08020200, 0x00000200, 0x00020200, 0x08020000, 0x08020008, 0x00020208,
+   0x08000208, 0x00020200, 0x00020000, 0x08000208, 0x00000008, 0x08020208,
+   0x00000200, 0x08000000, 0x08020200, 0x08000000, 0x00020008, 0x00000208,
+   0x00020000, 0x08020200, 0x08000200, 0x00000000, 0x00000200, 0x00020008,
+   0x08020208, 0x08000200, 0x08000008, 0x00000200, 0x00000000, 0x08020008,
+   0x08000208, 0x00020000, 0x08000000, 0x08020208, 0x00000008, 0x00020208,
+   0x00020200, 0x08000008, 0x08020000, 0x08000208, 0x00000208, 0x08020000,
+   0x00020208, 0x00000008, 0x08020008, 0x00020200,
+
+   0x00802001, 0x00002081, 0x00002081, 0x00000080, 0x00802080, 0x00800081,
+   0x00800001, 0x00002001, 0x00000000, 0x00802000, 0x00802000, 0x00802081,
+   0x00000081, 0x00000000, 0x00800080, 0x00800001, 0x00000001, 0x00002000,
+   0x00800000, 0x00802001, 0x00000080, 0x00800000, 0x00002001, 0x00002080,
+   0x00800081, 0x00000001, 0x00002080, 0x00800080, 0x00002000, 0x00802080,
+   0x00802081, 0x00000081, 0x00800080, 0x00800001, 0x00802000, 0x00802081,
+   0x00000081, 0x00000000, 0x00000000, 0x00802000, 0x00002080, 0x00800080,
+   0x00800081, 0x00000001, 0x00802001, 0x00002081, 0x00002081, 0x00000080,
+   0x00802081, 0x00000081, 0x00000001, 0x00002000, 0x00800001, 0x00002001,
+   0x00802080, 0x00800081, 0x00002001, 0x00002080, 0x00800000, 0x00802001,
+   0x00000080, 0x00800000, 0x00002000, 0x00802080,
+
+   0x00000100, 0x02080100, 0x02080000, 0x42000100, 0x00080000, 0x00000100,
+   0x40000000, 0x02080000, 0x40080100, 0x00080000, 0x02000100, 0x40080100,
+   0x42000100, 0x42080000, 0x00080100, 0x40000000, 0x02000000, 0x40080000,
+   0x40080000, 0x00000000, 0x40000100, 0x42080100, 0x42080100, 0x02000100,
+   0x42080000, 0x40000100, 0x00000000, 0x42000000, 0x02080100, 0x02000000,
+   0x42000000, 0x00080100, 0x00080000, 0x42000100, 0x00000100, 0x02000000,
+   0x40000000, 0x02080000, 0x42000100, 0x40080100, 0x02000100, 0x40000000,
+   0x42080000, 0x02080100, 0x40080100, 0x00000100, 0x02000000, 0x42080000,
+   0x42080100, 0x00080100, 0x42000000, 0x42080100, 0x02080000, 0x00000000,
+   0x40080000, 0x42000000, 0x00080100, 0x02000100, 0x40000100, 0x00080000,
+   0x00000000, 0x40080000, 0x02080100, 0x40000100,
+
+   0x20000010, 0x20400000, 0x00004000, 0x20404010, 0x20400000, 0x00000010,
+   0x20404010, 0x00400000, 0x20004000, 0x00404010, 0x00400000, 0x20000010,
+   0x00400010, 0x20004000, 0x20000000, 0x00004010, 0x00000000, 0x00400010,
+   0x20004010, 0x00004000, 0x00404000, 0x20004010, 0x00000010, 0x20400010,
+   0x20400010, 0x00000000, 0x00404010, 0x20404000, 0x00004010, 0x00404000,
+   0x20404000, 0x20000000, 0x20004000, 0x00000010, 0x20400010, 0x00404000,
+   0x20404010, 0x00400000, 0x00004010, 0x20000010, 0x00400000, 0x20004000,
+   0x20000000, 0x00004010, 0x20000010, 0x20404010, 0x00404000, 0x20400000,
+   0x00404010, 0x20404000, 0x00000000, 0x20400010, 0x00000010, 0x00004000,
+   0x20400000, 0x00404010, 0x00004000, 0x00400010, 0x20004010, 0x00000000,
+   0x20404000, 0x20000000, 0x00400010, 0x20004010,
+
+   0x00200000, 0x04200002, 0x04000802, 0x00000000, 0x00000800, 0x04000802,
+   0x00200802, 0x04200800, 0x04200802, 0x00200000, 0x00000000, 0x04000002,
+   0x00000002, 0x04000000, 0x04200002, 0x00000802, 0x04000800, 0x00200802,
+   0x00200002, 0x04000800, 0x04000002, 0x04200000, 0x04200800, 0x00200002,
+   0x04200000, 0x00000800, 0x00000802, 0x04200802, 0x00200800, 0x00000002,
+   0x04000000, 0x00200800, 0x04000000, 0x00200800, 0x00200000, 0x04000802,
+   0x04000802, 0x04200002, 0x04200002, 0x00000002, 0x00200002, 0x04000000,
+   0x04000800, 0x00200000, 0x04200800, 0x00000802, 0x00200802, 0x04200800,
+   0x00000802, 0x04000002, 0x04200802, 0x04200000, 0x00200800, 0x00000000,
+   0x00000002, 0x04200802, 0x00000000, 0x00200802, 0x04200000, 0x00000800,
+   0x04000002, 0x04000800, 0x00000800, 0x00200002,
+
+   0x10001040, 0x00001000, 0x00040000, 0x10041040, 0x10000000, 0x10001040,
+   0x00000040, 0x10000000, 0x00040040, 0x10040000, 0x10041040, 0x00041000,
+   0x10041000, 0x00041040, 0x00001000, 0x00000040, 0x10040000, 0x10000040,
+   0x10001000, 0x00001040, 0x00041000, 0x00040040, 0x10040040, 0x10041000,
+   0x00001040, 0x00000000, 0x00000000, 0x10040040, 0x10000040, 0x10001000,
+   0x00041040, 0x00040000, 0x00041040, 0x00040000, 0x10041000, 0x00001000,
+   0x00000040, 0x10040040, 0x00001000, 0x00041040, 0x10001000, 0x00000040,
+   0x10000040, 0x10040000, 0x10040040, 0x10000000, 0x00040000, 0x10001040,
+   0x00000000, 0x10041040, 0x00040040, 0x10000040, 0x10040000, 0x10001000,
+   0x10001040, 0x00000000, 0x10041040, 0x00041000, 0x00041000, 0x00001040,
+   0x00001040, 0x00040040, 0x10000000, 0x10041000 };
 
 /*
 * DES Key Schedule
@@ -84,10 +182,15 @@ void des_key_schedule(uint32_t round_key[32], const uint8_t key[8])
 
 inline uint32_t spbox(uint32_t T0, uint32_t T1)
    {
-   return DES_SPBOX1[get_byte(0, T0)] ^ DES_SPBOX2[get_byte(0, T1)] ^
-          DES_SPBOX3[get_byte(1, T0)] ^ DES_SPBOX4[get_byte(1, T1)] ^
-          DES_SPBOX5[get_byte(2, T0)] ^ DES_SPBOX6[get_byte(2, T1)] ^
-          DES_SPBOX7[get_byte(3, T0)] ^ DES_SPBOX8[get_byte(3, T1)];
+   return
+      DES_SPBOX[64*0+((T0 >> 24) & 0x3F)] ^
+      DES_SPBOX[64*1+((T1 >> 24) & 0x3F)] ^
+      DES_SPBOX[64*2+((T0 >> 16) & 0x3F)] ^
+      DES_SPBOX[64*3+((T1 >> 16) & 0x3F)] ^
+      DES_SPBOX[64*4+((T0 >>  8) & 0x3F)] ^
+      DES_SPBOX[64*5+((T1 >>  8) & 0x3F)] ^
+      DES_SPBOX[64*6+((T0 >>  0) & 0x3F)] ^
+      DES_SPBOX[64*7+((T1 >>  0) & 0x3F)];
    }
 
 /*
@@ -173,12 +276,9 @@ inline void des_decrypt_x2(uint32_t& L0r, uint32_t& R0r,
    R1r = R1;
    }
 
-inline void des_IP(uint32_t& L, uint32_t& R, const uint8_t block[])
+inline void des_IP(uint32_t& L, uint32_t& R)
    {
    // IP sequence by Wei Dai, taken from public domain Crypto++
-   L = load_be<uint32_t>(block, 0);
-   R = load_be<uint32_t>(block, 1);
-
    uint32_t T;
    R = rotl<4>(R);
    T = (L ^ R) & 0xF0F0F0F0;
@@ -198,7 +298,7 @@ inline void des_IP(uint32_t& L, uint32_t& R, const uint8_t block[])
    R ^= T;
    }
 
-inline void des_FP(uint32_t L, uint32_t R, uint8_t out[])
+inline void des_FP(uint32_t& L, uint32_t& R)
    {
    // FP sequence by Wei Dai, taken from public domain Crypto++
    uint32_t T;
@@ -219,8 +319,6 @@ inline void des_FP(uint32_t L, uint32_t R, uint8_t out[])
    T = (L ^ R) & 0xF0F0F0F0;
    R ^= T;
    L = rotr<4>(L ^ T);
-
-   store_be(out, R, L);
    }
 
 }
@@ -234,28 +332,38 @@ void DES::encrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
 
    while(blocks >= 2)
       {
-      uint32_t L0, R0;
-      uint32_t L1, R1;
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
+      uint32_t L1 = load_be<uint32_t>(in, 2);
+      uint32_t R1 = load_be<uint32_t>(in, 3);
 
-      des_IP(L0, R0, in);
-      des_IP(L1, R1, in + BLOCK_SIZE);
+      des_IP(L0, R0);
+      des_IP(L1, R1);
 
       des_encrypt_x2(L0, R0, L1, R1, m_round_key.data());
 
-      des_FP(L0, R0, out);
-      des_FP(L1, R1, out + BLOCK_SIZE);
+      des_FP(L0, R0);
+      des_FP(L1, R1);
+
+      store_be(out, R0, L0, R1, L1);
 
       in += 2*BLOCK_SIZE;
       out += 2*BLOCK_SIZE;
       blocks -= 2;
       }
 
-   for(size_t i = 0; i < blocks; ++i)
+   while(blocks > 0)
       {
-      uint32_t L, R;
-      des_IP(L, R, in + BLOCK_SIZE*i);
-      des_encrypt(L, R, m_round_key.data());
-      des_FP(L, R, out + BLOCK_SIZE*i);
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
+      des_IP(L0, R0);
+      des_encrypt(L0, R0, m_round_key.data());
+      des_FP(L0, R0);
+      store_be(out, R0, L0);
+
+      in += BLOCK_SIZE;
+      out += BLOCK_SIZE;
+      blocks -= 1;
       }
    }
 
@@ -268,28 +376,38 @@ void DES::decrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
 
    while(blocks >= 2)
       {
-      uint32_t L0, R0;
-      uint32_t L1, R1;
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
+      uint32_t L1 = load_be<uint32_t>(in, 2);
+      uint32_t R1 = load_be<uint32_t>(in, 3);
 
-      des_IP(L0, R0, in);
-      des_IP(L1, R1, in + BLOCK_SIZE);
+      des_IP(L0, R0);
+      des_IP(L1, R1);
 
       des_decrypt_x2(L0, R0, L1, R1, m_round_key.data());
 
-      des_FP(L0, R0, out);
-      des_FP(L1, R1, out + BLOCK_SIZE);
+      des_FP(L0, R0);
+      des_FP(L1, R1);
+
+      store_be(out, R0, L0, R1, L1);
 
       in += 2*BLOCK_SIZE;
       out += 2*BLOCK_SIZE;
       blocks -= 2;
       }
 
-   for(size_t i = 0; i < blocks; ++i)
+   while(blocks > 0)
       {
-      uint32_t L, R;
-      des_IP(L, R, in + BLOCK_SIZE*i);
-      des_decrypt(L, R, m_round_key.data());
-      des_FP(L, R, out + BLOCK_SIZE*i);
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
+      des_IP(L0, R0);
+      des_decrypt(L0, R0, m_round_key.data());
+      des_FP(L0, R0);
+      store_be(out, R0, L0);
+
+      in += BLOCK_SIZE;
+      out += BLOCK_SIZE;
+      blocks -= 1;
       }
    }
 
@@ -314,36 +432,53 @@ void TripleDES::encrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) cons
    {
    verify_key_set(m_round_key.empty() == false);
 
+#if defined(BOTAN_HAS_DES_BMI2)
+   if(CPUID::has_bmi2() && CPUID::has_fast_pdep())
+      {
+      return bmi2_encrypt_n(in, out, blocks, &m_round_key[0]);
+      }
+#endif
+
    while(blocks >= 2)
       {
-      uint32_t L0, R0;
-      uint32_t L1, R1;
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
+      uint32_t L1 = load_be<uint32_t>(in, 2);
+      uint32_t R1 = load_be<uint32_t>(in, 3);
 
-      des_IP(L0, R0, in);
-      des_IP(L1, R1, in + BLOCK_SIZE);
+      des_IP(L0, R0);
+      des_IP(L1, R1);
 
       des_encrypt_x2(L0, R0, L1, R1, &m_round_key[0]);
       des_decrypt_x2(R0, L0, R1, L1, &m_round_key[32]);
       des_encrypt_x2(L0, R0, L1, R1, &m_round_key[64]);
 
-      des_FP(L0, R0, out);
-      des_FP(L1, R1, out + BLOCK_SIZE);
+      des_FP(L0, R0);
+      des_FP(L1, R1);
+
+      store_be(out, R0, L0, R1, L1);
 
       in += 2*BLOCK_SIZE;
       out += 2*BLOCK_SIZE;
       blocks -= 2;
       }
 
-   for(size_t i = 0; i != blocks; ++i)
+   while(blocks > 0)
       {
-      uint32_t L, R;
-      des_IP(L, R, in + BLOCK_SIZE*i);
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
 
-      des_encrypt(L, R, &m_round_key[0]);
-      des_decrypt(R, L, &m_round_key[32]);
-      des_encrypt(L, R, &m_round_key[64]);
+      des_IP(L0, R0);
+      des_encrypt(L0, R0, &m_round_key[0]);
+      des_decrypt(R0, L0, &m_round_key[32]);
+      des_encrypt(L0, R0, &m_round_key[64]);
+      des_FP(L0, R0);
 
-      des_FP(L, R, out + BLOCK_SIZE*i);
+      store_be(out, R0, L0);
+
+      in += BLOCK_SIZE;
+      out += BLOCK_SIZE;
+      blocks -= 1;
       }
    }
 
@@ -354,36 +489,53 @@ void TripleDES::decrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) cons
    {
    verify_key_set(m_round_key.empty() == false);
 
+#if defined(BOTAN_HAS_DES_BMI2)
+   if(CPUID::has_bmi2() && CPUID::has_fast_pdep())
+      {
+      return bmi2_decrypt_n(in, out, blocks, &m_round_key[0]);
+      }
+#endif
+
    while(blocks >= 2)
       {
-      uint32_t L0, R0;
-      uint32_t L1, R1;
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
+      uint32_t L1 = load_be<uint32_t>(in, 2);
+      uint32_t R1 = load_be<uint32_t>(in, 3);
 
-      des_IP(L0, R0, in);
-      des_IP(L1, R1, in + BLOCK_SIZE);
+      des_IP(L0, R0);
+      des_IP(L1, R1);
 
       des_decrypt_x2(L0, R0, L1, R1, &m_round_key[64]);
       des_encrypt_x2(R0, L0, R1, L1, &m_round_key[32]);
       des_decrypt_x2(L0, R0, L1, R1, &m_round_key[0]);
 
-      des_FP(L0, R0, out);
-      des_FP(L1, R1, out + BLOCK_SIZE);
+      des_FP(L0, R0);
+      des_FP(L1, R1);
+
+      store_be(out, R0, L0, R1, L1);
 
       in += 2*BLOCK_SIZE;
       out += 2*BLOCK_SIZE;
       blocks -= 2;
       }
 
-   for(size_t i = 0; i != blocks; ++i)
+   while(blocks > 0)
       {
-      uint32_t L, R;
-      des_IP(L, R, in + BLOCK_SIZE*i);
+      uint32_t L0 = load_be<uint32_t>(in, 0);
+      uint32_t R0 = load_be<uint32_t>(in, 1);
 
-      des_decrypt(L, R, &m_round_key[64]);
-      des_encrypt(R, L, &m_round_key[32]);
-      des_decrypt(L, R, &m_round_key[0]);
+      des_IP(L0, R0);
+      des_decrypt(L0, R0, &m_round_key[64]);
+      des_encrypt(R0, L0, &m_round_key[32]);
+      des_decrypt(L0, R0, &m_round_key[0]);
+      des_FP(L0, R0);
 
-      des_FP(L, R, out + BLOCK_SIZE*i);
+      store_be(out, R0, L0);
+
+      in += BLOCK_SIZE;
+      out += BLOCK_SIZE;
+      blocks -= 1;
       }
    }
 

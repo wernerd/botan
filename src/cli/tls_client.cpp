@@ -15,7 +15,6 @@
 #include <botan/x509path.h>
 #include <botan/ocsp.h>
 #include <botan/hex.h>
-#include <botan/parsing.h>
 #include <fstream>
 
 #if defined(BOTAN_HAS_TLS_SQLITE3_SESSION_MANAGER)
@@ -120,7 +119,7 @@ class TLS_Client final : public Command, public Botan::TLS::Callbacks
 
          const bool use_tcp = (transport == "tcp");
 
-         const std::vector<std::string> protocols_to_offer = Botan::split_on(next_protos, ',');
+         const std::vector<std::string> protocols_to_offer = Command::split_on(next_protos, ',');
 
          Botan::TLS::Protocol_Version version =
             use_tcp ? Botan::TLS::Protocol_Version::TLS_V12 : Botan::TLS::Protocol_Version::DTLS_V12;
@@ -309,7 +308,7 @@ class TLS_Client final : public Command, public Botan::TLS::Callbacks
 
       void tls_verify_cert_chain(
          const std::vector<Botan::X509_Certificate>& cert_chain,
-         const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp,
+         const std::vector<std::optional<Botan::OCSP::Response>>& ocsp,
          const std::vector<Botan::Certificate_Store*>& trusted_roots,
          Botan::Usage_Type usage,
          const std::string& hostname,
@@ -380,7 +379,7 @@ class TLS_Client final : public Command, public Botan::TLS::Callbacks
 
       static void dgram_socket_write(int sockfd, const uint8_t buf[], size_t length)
          {
-         int r = ::send(sockfd, buf, length, MSG_NOSIGNAL);
+         auto r = ::send(sockfd, buf, length, MSG_NOSIGNAL);
 
          if(r == -1)
             {

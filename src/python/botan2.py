@@ -55,21 +55,26 @@ def _load_botan_dll(expected_version):
     possible_dll_names = []
 
     if platform in ['win32', 'cygwin', 'msys']:
+        possible_dll_names.append('botan-3.dll')
         possible_dll_names.append('botan.dll')
     elif platform in ['darwin', 'macos']:
+        possible_dll_names.append('libbotan-3.dylib')
         possible_dll_names.append('libbotan-2.dylib')
     else:
         # assumed to be some Unix/Linux system
+        possible_dll_names.append('libbotan-3.so')
+        possible_dll_names += ['libbotan-3.so.%d' % (v) for v in reversed(range(0, 10))]
         possible_dll_names.append('libbotan-2.so')
         possible_dll_names += ['libbotan-2.so.%d' % (v) for v in reversed(range(13, 20))]
 
     for dll_name in possible_dll_names:
         try:
             dll = CDLL(dll_name)
-            dll.botan_ffi_supports_api.argtypes = [c_uint32]
-            dll.botan_ffi_supports_api.restype = c_int
-            if dll.botan_ffi_supports_api(expected_version) == 0:
-                return dll
+            if hasattr(dll, 'botan_ffi_supports_api'):
+                dll.botan_ffi_supports_api.argtypes = [c_uint32]
+                dll.botan_ffi_supports_api.restype = c_int
+                if dll.botan_ffi_supports_api(expected_version) == 0:
+                    return dll
         except OSError:
             pass
 
@@ -1233,35 +1238,6 @@ class PKKeyAgreement(object):
                                       _DLL.botan_pk_op_key_agreement(self.__obj, b, bl,
                                                                      other, len(other),
                                                                      salt, len(salt)))
-
-#
-# MCEIES encryption
-# Must be used with McEliece keys
-#
-def mceies_encrypt(mce, rng_obj, aead, pt, ad):
-    return _call_fn_returning_vec(len(pt) + 1024, lambda b, bl:
-                                  _DLL.botan_mceies_encrypt(mce.handle_(),
-                                                            rng_obj.handle_(),
-                                                            _ctype_str(aead),
-                                                            _ctype_bits(pt),
-                                                            len(pt),
-                                                            _ctype_bits(ad),
-                                                            len(ad),
-                                                            b, bl))
-
-def mceies_decrypt(mce, aead, ct, ad):
-
-    #msg = cast(msg, c_char_p)
-    #ll = c_size_t(ll)
-
-    return _call_fn_returning_vec(len(ct), lambda b, bl:
-                                  _DLL.botan_mceies_decrypt(mce.handle_(),
-                                                            _ctype_str(aead),
-                                                            _ctype_bits(ct),
-                                                            len(ct),
-                                                            _ctype_bits(ad),
-                                                            len(ad),
-                                                            b, bl))
 
 
 def _load_buf_or_file(filename, buf, file_fn, buf_fn):

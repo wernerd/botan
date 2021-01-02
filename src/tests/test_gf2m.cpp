@@ -7,7 +7,7 @@
 #include "tests.h"
 
 #if defined(BOTAN_HAS_MCELIECE)
-   #include <botan/gf2m_small_m.h>
+   #include <botan/internal/gf2m_small_m.h>
 #endif
 
 namespace Botan_Tests {
@@ -66,7 +66,7 @@ class GF2m_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("gf2m", GF2m_Tests);
+BOTAN_REGISTER_TEST("pubkey", "gf2m", GF2m_Tests);
 
 #endif
 

@@ -9,14 +9,14 @@
 #include <botan/rng.h>
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
-#include <botan/alg_id.h>
+#include <botan/asn1_obj.h>
 #include <botan/oids.h>
 #include <botan/pem.h>
-#include <botan/scan_name.h>
+#include <botan/internal/scan_name.h>
 #include <botan/pk_algs.h>
 
 #if defined(BOTAN_HAS_PKCS5_PBES2)
-   #include <botan/pbes2.h>
+   #include <botan/internal/pbes2.h>
 #endif
 
 namespace Botan {
@@ -34,9 +34,9 @@ secure_vector<uint8_t> PKCS8_extract(DataSource& source,
    secure_vector<uint8_t> key_data;
 
    BER_Decoder(source)
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .decode(pbe_alg_id)
-         .decode(key_data, OCTET_STRING)
+         .decode(key_data, ASN1_Tag::OCTET_STRING)
       .verify_end();
 
    return key_data;
@@ -117,10 +117,10 @@ secure_vector<uint8_t> PKCS8_decode(
          key = key_data;
 
       BER_Decoder(key)
-         .start_cons(SEQUENCE)
+         .start_sequence()
             .decode_and_check<size_t>(0, "Unknown PKCS #8 version number")
             .decode(pk_alg_id)
-            .decode(key, OCTET_STRING)
+            .decode(key, ASN1_Tag::OCTET_STRING)
             .discard_remaining()
          .end_cons();
       }
@@ -134,20 +134,11 @@ secure_vector<uint8_t> PKCS8_decode(
 }
 
 /*
-* BER encode a PKCS #8 private key, unencrypted
-*/
-secure_vector<uint8_t> BER_encode(const Private_Key& key)
-   {
-   // keeping around for compat
-   return key.private_key_info();
-   }
-
-/*
 * PEM encode a PKCS #8 private key, unencrypted
 */
 std::string PEM_encode(const Private_Key& key)
    {
-   return PEM_Code::encode(PKCS8::BER_encode(key), "PRIVATE KEY");
+   return PEM_Code::encode(key.private_key_info(), "PRIVATE KEY");
    }
 
 #if defined(BOTAN_HAS_PKCS5_PBES2)
@@ -212,9 +203,9 @@ std::vector<uint8_t> BER_encode(const Private_Key& key,
 
    std::vector<uint8_t> output;
    DER_Encoder der(output);
-   der.start_cons(SEQUENCE)
+   der.start_sequence()
          .encode(pbe_info.first)
-         .encode(pbe_info.second, OCTET_STRING)
+         .encode(pbe_info.second, ASN1_Tag::OCTET_STRING)
       .end_cons();
 
    return output;
@@ -260,9 +251,9 @@ std::vector<uint8_t> BER_encode_encrypted_pbkdf_iter(const Private_Key& key,
 
    std::vector<uint8_t> output;
    DER_Encoder der(output);
-   der.start_cons(SEQUENCE)
+   der.start_sequence()
          .encode(pbe_info.first)
-         .encode(pbe_info.second, OCTET_STRING)
+         .encode(pbe_info.second, ASN1_Tag::OCTET_STRING)
       .end_cons();
 
    return output;
@@ -309,9 +300,9 @@ std::vector<uint8_t> BER_encode_encrypted_pbkdf_msec(const Private_Key& key,
 
    std::vector<uint8_t> output;
    DER_Encoder(output)
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .encode(pbe_info.first)
-         .encode(pbe_info.second, OCTET_STRING)
+         .encode(pbe_info.second, ASN1_Tag::OCTET_STRING)
       .end_cons();
 
    return output;
@@ -364,7 +355,7 @@ load_key(DataSource& source,
 * Extract an encrypted private key and return it
 */
 std::unique_ptr<Private_Key> load_key(DataSource& source,
-                      std::function<std::string ()> get_pass)
+                                      std::function<std::string ()> get_pass)
    {
    return load_key(source, get_pass, true);
    }
@@ -373,7 +364,7 @@ std::unique_ptr<Private_Key> load_key(DataSource& source,
 * Extract an encrypted private key and return it
 */
 std::unique_ptr<Private_Key> load_key(DataSource& source,
-                      const std::string& pass)
+                                      const std::string& pass)
    {
    // We need to use bind rather than a lambda capturing `pass` here in order to avoid a Clang 8 bug.
    // See https://github.com/randombit/botan/issues/2255.
@@ -391,99 +382,6 @@ std::unique_ptr<Private_Key> load_key(DataSource& source)
 
    return load_key(source, fail_fn, false);
    }
-
-/*
-* Make a copy of this private key
-*/
-std::unique_ptr<Private_Key> copy_key(const Private_Key& key)
-   {
-   DataSource_Memory source(PEM_encode(key));
-   return PKCS8::load_key(source);
-   }
-
-/*
-* Extract an encrypted private key and return it
-*/
-Private_Key* load_key(DataSource& source,
-                      RandomNumberGenerator& rng,
-                      std::function<std::string ()> get_pass)
-   {
-   BOTAN_UNUSED(rng);
-   return PKCS8::load_key(source, get_pass).release();
-   }
-
-/*
-* Extract an encrypted private key and return it
-*/
-Private_Key* load_key(DataSource& source,
-                      RandomNumberGenerator& rng,
-                      const std::string& pass)
-   {
-   BOTAN_UNUSED(rng);
-   return PKCS8::load_key(source, pass).release();
-   }
-
-/*
-* Extract an unencrypted private key and return it
-*/
-Private_Key* load_key(DataSource& source,
-                      RandomNumberGenerator& rng)
-   {
-   BOTAN_UNUSED(rng);
-   return PKCS8::load_key(source).release();
-   }
-
-#if defined(BOTAN_TARGET_OS_HAS_FILESYSTEM)
-
-/*
-* Extract an encrypted private key and return it
-*/
-Private_Key* load_key(const std::string& fsname,
-                      RandomNumberGenerator& rng,
-                      std::function<std::string ()> get_pass)
-   {
-   BOTAN_UNUSED(rng);
-   DataSource_Stream in(fsname);
-   return PKCS8::load_key(in, get_pass).release();
-   }
-
-/*
-* Extract an encrypted private key and return it
-*/
-Private_Key* load_key(const std::string& fsname,
-                      RandomNumberGenerator& rng,
-                      const std::string& pass)
-   {
-   BOTAN_UNUSED(rng);
-   DataSource_Stream in(fsname);
-   // We need to use bind rather than a lambda capturing `pass` here in order to avoid a Clang 8 bug.
-   // See https://github.com/randombit/botan/issues/2255.
-   return PKCS8::load_key(in, std::bind([](const std::string p) { return p; }, pass)).release();
-   }
-
-/*
-* Extract an unencrypted private key and return it
-*/
-Private_Key* load_key(const std::string& fsname,
-                      RandomNumberGenerator& rng)
-   {
-   BOTAN_UNUSED(rng);
-   DataSource_Stream in(fsname);
-   return PKCS8::load_key(in).release();
-   }
-#endif
-
-/*
-* Make a copy of this private key
-*/
-Private_Key* copy_key(const Private_Key& key,
-                      RandomNumberGenerator& rng)
-   {
-   BOTAN_UNUSED(rng);
-   return PKCS8::copy_key(key).release();
-   }
-
-
 
 }
 

@@ -104,15 +104,6 @@ bool check_for_resume(Session& session_info,
                     session_info.ciphersuite_code()))
       return false;
 
-#if defined(BOTAN_HAS_SRP6)
-   // client sent a different SRP identity
-   if(client_hello->srp_identifier() != "")
-      {
-      if(client_hello->srp_identifier() != session_info.srp_identifier())
-         return false;
-      }
-#endif
-
    // client sent a different SNI hostname
    if(client_hello->sni_hostname() != "")
       {
@@ -158,14 +149,12 @@ bool check_for_resume(Session& session_info,
 uint16_t choose_ciphersuite(
    const Policy& policy,
    Protocol_Version version,
-   Credentials_Manager& creds,
    const std::map<std::string, std::vector<X509_Certificate>>& cert_chains,
    const Client_Hello& client_hello)
    {
    const bool our_choice = policy.server_uses_own_ciphersuite_preferences();
-   const bool have_srp = creds.attempt_srp("tls-server", client_hello.sni_hostname());
    const std::vector<uint16_t> client_suites = client_hello.ciphersuites();
-   const std::vector<uint16_t> server_suites = policy.ciphersuite_list(version, have_srp);
+   const std::vector<uint16_t> server_suites = policy.ciphersuite_list(version);
 
    if(server_suites.empty())
       throw TLS_Exception(Alert::HANDSHAKE_FAILURE,
@@ -224,7 +213,6 @@ uint16_t choose_ciphersuite(
                // If empty, then implicit SHA-1 (TLS v1.2 rules)
                client_sig_methods.push_back(Signature_Scheme::RSA_PKCS1_SHA1);
                client_sig_methods.push_back(Signature_Scheme::ECDSA_SHA1);
-               client_sig_methods.push_back(Signature_Scheme::DSA_SHA1);
                }
 
             bool we_support_some_hash_by_client = false;
@@ -248,20 +236,6 @@ uint16_t choose_ciphersuite(
                }
             }
          }
-
-#if defined(BOTAN_HAS_SRP6)
-      /*
-      The client may offer SRP cipher suites in the hello message but
-      omit the SRP extension.  If the server would like to select an
-      SRP cipher suite in this case, the server SHOULD return a fatal
-      "unknown_psk_identity" alert immediately after processing the
-      client hello message.
-       - RFC 5054 section 2.5.1.2
-      */
-      if(suite.kex_method() == Kex_Algo::SRP_SHA && client_hello.srp_identifier() == "")
-         throw TLS_Exception(Alert::UNKNOWN_PSK_IDENTITY,
-                             "Client wanted SRP but did not send username");
-#endif
 
       return suite_id;
       }
@@ -305,43 +279,6 @@ Server::Server(Callbacks& callbacks,
    Channel(callbacks, session_manager, rng, policy,
            true, is_datagram, io_buf_sz),
    m_creds(creds)
-   {
-   }
-
-Server::Server(output_fn output,
-               data_cb got_data_cb,
-               alert_cb recv_alert_cb,
-               handshake_cb hs_cb,
-               Session_Manager& session_manager,
-               Credentials_Manager& creds,
-               const Policy& policy,
-               RandomNumberGenerator& rng,
-               next_protocol_fn next_proto,
-               bool is_datagram,
-               size_t io_buf_sz) :
-   Channel(output, got_data_cb, recv_alert_cb, hs_cb,
-           Channel::handshake_msg_cb(), session_manager,
-           rng, policy, true, is_datagram, io_buf_sz),
-   m_creds(creds),
-   m_choose_next_protocol(next_proto)
-   {
-   }
-
-Server::Server(output_fn output,
-               data_cb got_data_cb,
-               alert_cb recv_alert_cb,
-               handshake_cb hs_cb,
-               handshake_msg_cb hs_msg_cb,
-               Session_Manager& session_manager,
-               Credentials_Manager& creds,
-               const Policy& policy,
-               RandomNumberGenerator& rng,
-               next_protocol_fn next_proto,
-               bool is_datagram) :
-   Channel(output, got_data_cb, recv_alert_cb, hs_cb, hs_msg_cb,
-           session_manager, rng, policy, true, is_datagram),
-   m_creds(creds),
-   m_choose_next_protocol(next_proto)
    {
    }
 
@@ -498,6 +435,10 @@ void Server::process_client_hello_msg(const Handshake_State* active_state,
       return;
       }
 
+   if(pending_state.handshake_io().have_more_data())
+      throw TLS_Exception(Alert::UNEXPECTED_MESSAGE,
+                          "Have data remaining in buffer after ClientHello");
+
    pending_state.client_hello(new Client_Hello(contents));
    const Protocol_Version client_offer = pending_state.client_hello()->version();
    const bool datagram = client_offer.is_datagram_protocol();
@@ -512,7 +453,7 @@ void Server::process_client_hello_msg(const Handshake_State* active_state,
       if(client_offer.major_version() < 3)
          throw TLS_Exception(Alert::PROTOCOL_VERSION, "Client offered TLS version with major version under 3");
       if(client_offer.major_version() == 3 && client_offer.minor_version() == 0)
-         throw TLS_Exception(Alert::PROTOCOL_VERSION, "SSLv3 is not supported");
+         throw TLS_Exception(Alert::PROTOCOL_VERSION, "Client offered SSLv3 which is not supported");
       }
 
    /*
@@ -662,6 +603,12 @@ void Server::process_certificate_verify_msg(Server_Handshake_State& pending_stat
    const std::vector<X509_Certificate>& client_certs =
       pending_state.client_certs()->cert_chain();
 
+   if(client_certs.empty())
+      throw TLS_Exception(Alert::DECODE_ERROR, "No client certificate sent");
+
+   if(!client_certs[0].allowed_usage(DIGITAL_SIGNATURE))
+      throw TLS_Exception(Alert::BAD_CERTIFICATE, "Client certificate does not support signing");
+
    const bool sig_valid =
       pending_state.client_verify()->verify(client_certs[0], pending_state, policy());
 
@@ -701,6 +648,10 @@ void Server::process_finished_msg(Server_Handshake_State& pending_state,
    {
    pending_state.set_expected_next(HANDSHAKE_NONE);
 
+   if(pending_state.handshake_io().have_more_data())
+      throw TLS_Exception(Alert::UNEXPECTED_MESSAGE,
+                          "Have data remaining in buffer after Finished");
+
    pending_state.client_finished(new Finished(contents));
 
    if(!pending_state.client_finished()->verify(pending_state, CLIENT))
@@ -724,7 +675,6 @@ void Server::process_finished_msg(Server_Handshake_State& pending_state,
          get_peer_cert_chain(pending_state),
          std::vector<uint8_t>(),
          Server_Information(pending_state.client_hello()->sni_hostname()),
-         pending_state.srp_identifier(),
          pending_state.server_hello()->srtp_profile());
 
       if(save_session(session_info))
@@ -909,7 +859,7 @@ void Server::session_create(Server_Handshake_State& pending_state,
       }
 
    const uint16_t ciphersuite = choose_ciphersuite(policy(), pending_state.version(),
-                                                   m_creds, cert_chains,
+                                                   cert_chains,
                                                    *pending_state.client_hello());
 
    Server_Hello::Settings srv_settings(

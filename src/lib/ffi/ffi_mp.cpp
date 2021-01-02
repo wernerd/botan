@@ -11,7 +11,7 @@
 #include <botan/internal/ffi_mp.h>
 #include <botan/reducer.h>
 #include <botan/numthry.h>
-#include <botan/divide.h>
+#include <botan/internal/divide.h>
 
 extern "C" {
 
@@ -192,7 +192,7 @@ int botan_mp_div(botan_mp_t quotient,
    {
    return BOTAN_FFI_DO(Botan::BigInt, quotient, q, {
       Botan::BigInt r;
-      Botan::divide(safe_get(x), safe_get(y), q, r);
+      Botan::vartime_divide(safe_get(x), safe_get(y), q, r);
       safe_get(remainder) = r;
       });
    }

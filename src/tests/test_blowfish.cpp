@@ -8,7 +8,7 @@
 
 #if defined(BOTAN_HAS_BLOWFISH)
 
-#include <botan/blowfish.h>
+#include <botan/internal/blowfish.h>
 
 namespace Botan_Tests {
 
@@ -39,7 +39,7 @@ class Blowfish_Salted_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("blowfish_salted", Blowfish_Salted_Tests);
+BOTAN_REGISTER_TEST("block", "blowfish_salted", Blowfish_Salted_Tests);
 
 }
 

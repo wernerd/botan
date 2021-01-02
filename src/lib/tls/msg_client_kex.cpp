@@ -23,10 +23,6 @@
   #include <botan/cecpq1.h>
 #endif
 
-#if defined(BOTAN_HAS_SRP6)
-  #include <botan/srp6.h>
-#endif
-
 namespace Botan {
 
 namespace TLS {
@@ -72,8 +68,7 @@ Client_Key_Exchange::Client_Key_Exchange(Handshake_IO& io,
 
       SymmetricKey psk;
 
-      if(kex_algo == Kex_Algo::DHE_PSK ||
-         kex_algo == Kex_Algo::ECDHE_PSK)
+      if(kex_algo == Kex_Algo::ECDHE_PSK)
          {
          std::string identity_hint = reader.get_string(2, 0, 65535);
 
@@ -85,8 +80,7 @@ Client_Key_Exchange::Client_Key_Exchange(Handshake_IO& io,
          psk = creds.psk("tls-client", hostname, psk_identity);
          }
 
-      if(kex_algo == Kex_Algo::DH ||
-         kex_algo == Kex_Algo::DHE_PSK)
+      if(kex_algo == Kex_Algo::DH)
          {
          const std::vector<uint8_t> modulus = reader.get_range<uint8_t>(2, 1, 65535);
          const std::vector<uint8_t> generator = reader.get_range<uint8_t>(2, 1, 65535);
@@ -146,36 +140,6 @@ Client_Key_Exchange::Client_Key_Exchange(Handshake_IO& io,
 
          append_tls_length_value(m_key_material, ecdh_result.second, 1);
          }
-#if defined(BOTAN_HAS_SRP6)
-      else if(kex_algo == Kex_Algo::SRP_SHA)
-         {
-         const BigInt N = BigInt::decode(reader.get_range<uint8_t>(2, 1, 65535));
-         const BigInt g = BigInt::decode(reader.get_range<uint8_t>(2, 1, 65535));
-         std::vector<uint8_t> salt = reader.get_range<uint8_t>(1, 1, 255);
-         const BigInt B = BigInt::decode(reader.get_range<uint8_t>(2, 1, 65535));
-
-         const std::string srp_group = srp6_group_identifier(N, g);
-
-         const std::string srp_identifier =
-            creds.srp_identifier("tls-client", hostname);
-
-         const std::string srp_password =
-            creds.srp_password("tls-client", hostname, srp_identifier);
-
-         std::pair<BigInt, SymmetricKey> srp_vals =
-            srp6_client_agree(srp_identifier,
-                              srp_password,
-                              srp_group,
-                              "SHA-1",
-                              salt,
-                              B,
-                              rng);
-
-         append_tls_length_value(m_key_material, BigInt::encode(srp_vals.first), 2);
-         m_pre_master = srp_vals.second.bits_of();
-         }
-#endif
-
 #if defined(BOTAN_HAS_CECPQ1)
       else if(kex_algo == Kex_Algo::CECPQ1)
          {
@@ -251,7 +215,7 @@ Client_Key_Exchange::Client_Key_Exchange(const std::vector<uint8_t>& contents,
       if(!server_rsa_kex_key)
          throw Internal_Error("Expected RSA kex but no server kex key set");
 
-      if(!dynamic_cast<const RSA_PrivateKey*>(server_rsa_kex_key))
+      if(server_rsa_kex_key->algo_name() != "RSA")
          throw Internal_Error("Expected RSA key but got " + server_rsa_kex_key->algo_name());
 
       TLS_Data_Reader reader("ClientKeyExchange", contents);
@@ -313,14 +277,6 @@ Client_Key_Exchange::Client_Key_Exchange(const std::vector<uint8_t>& contents,
          append_tls_length_value(m_pre_master, zeros, 2);
          append_tls_length_value(m_pre_master, psk.bits_of(), 2);
          }
-#if defined(BOTAN_HAS_SRP6)
-      else if(kex_algo == Kex_Algo::SRP_SHA)
-         {
-         SRP6_Server_Session& srp = state.server_kex()->server_srp_params();
-
-         m_pre_master = srp.step2(BigInt::decode(reader.get_range<uint8_t>(2, 0, 65535))).bits_of();
-         }
-#endif
 #if defined(BOTAN_HAS_CECPQ1)
       else if(kex_algo == Kex_Algo::CECPQ1)
          {
@@ -335,7 +291,6 @@ Client_Key_Exchange::Client_Key_Exchange(const std::vector<uint8_t>& contents,
          }
 #endif
       else if(kex_algo == Kex_Algo::DH ||
-              kex_algo == Kex_Algo::DHE_PSK ||
               kex_algo == Kex_Algo::ECDH ||
               kex_algo == Kex_Algo::ECDHE_PSK)
          {
@@ -368,8 +323,7 @@ Client_Key_Exchange::Client_Key_Exchange(const std::vector<uint8_t>& contents,
             if(ka_key->algo_name() == "DH")
                shared_secret = CT::strip_leading_zeros(shared_secret);
 
-            if(kex_algo == Kex_Algo::DHE_PSK ||
-               kex_algo == Kex_Algo::ECDHE_PSK)
+            if(kex_algo == Kex_Algo::ECDHE_PSK)
                {
                append_tls_length_value(m_pre_master, shared_secret, 2);
                append_tls_length_value(m_pre_master, psk.bits_of(), 2);

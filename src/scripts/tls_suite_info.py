@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """
 Used to generate lib/tls/tls_suite_info.cpp from IANA params
@@ -110,6 +110,12 @@ def to_ciphersuite_info(code, name):
     if kex_algo == 'RSA':
         kex_algo = 'STATIC_RSA'
 
+    if sig_algo in ['DSA']:
+        return None
+
+    if kex_algo in ['SRP_SHA', 'DHE_PSK']:
+        return None
+
     (cipher_algo, cipher_keylen) = cipher_info[cipher[0]]
 
     if cipher_keylen is None:
@@ -125,7 +131,7 @@ def to_ciphersuite_info(code, name):
 
     mode = cipher[-1]
     if mode not in ['CBC', 'GCM', 'CCM(8)', 'CCM', 'OCB']:
-        print "#warning Unknown mode '%s' for ciphersuite %s (0x%d)" % (' '.join(cipher), name, code)
+        print("#warning Unknown mode '%s' for ciphersuite %s (0x%d)" % (' '.join(cipher), name, code))
 
     if mode != 'CBC':
         if mode == 'OCB':
@@ -149,8 +155,8 @@ def open_input(args):
         except OSError:
             pass
 
-        import urllib2
-        return urllib2.urlopen(iana_url)
+        import urllib.request, urllib.error, urllib.parse
+        return urllib.request.urlopen(iana_url)
     else:
          return open(args[1])
 
@@ -176,11 +182,6 @@ def process_command_line(args):
     parser.add_option('--without-cecpq1', action='store_false', dest='with_cecpq1',
                       help='disable CECPQ1 suites')
 
-    parser.add_option('--with-srp-aead', action='store_true', default=False,
-                      help='add SRP AEAD suites')
-    parser.add_option('--without-srp-aead', action='store_false', dest='with_srp_aead',
-                      help='disable SRP AEAD suites')
-
     parser.add_option('--save-download', action='store_true', default=False,
                       help='save downloaded tls-parameters.txt to cwd')
 
@@ -194,11 +195,12 @@ def main(args = None):
     if args is None:
         args = sys.argv
 
-    weak_crypto = ['EXPORT', 'RC2', 'IDEA', 'RC4', '_DES_', 'WITH_NULL', 'GOST']
+    weak_crypto = ['EXPORT', 'RC2', 'IDEA', 'RC4', '_DES_', 'WITH_NULL', 'GOST', '_anon_']
     static_dh = ['ECDH_ECDSA', 'ECDH_RSA', 'DH_DSS', 'DH_RSA'] # not supported
+    removed_algos = ['SEED', 'CAMELLIA_128_CBC', 'CAMELLIA_256_CBC']
     protocol_goop = ['SCSV', 'KRB5']
     maybe_someday = ['RSA_PSK', 'ECCPWD']
-    not_supported = weak_crypto + static_dh + protocol_goop + maybe_someday
+    not_supported = weak_crypto + static_dh + protocol_goop + maybe_someday + removed_algos
 
     (options, args) = process_command_line(args)
 
@@ -212,6 +214,8 @@ def main(args = None):
     contents = ''
 
     for line in open_input(args):
+        if not isinstance(line, str):
+            line = line.decode('utf8')
         contents += line
         match = ciphersuite_re.match(line)
         if match:
@@ -224,11 +228,13 @@ def main(args = None):
                     should_use = False
 
             if should_use and name.find('_WITH_') > 0:
-                suites[code] = to_ciphersuite_info(code, name)
+                info = to_ciphersuite_info(code, name)
+                if info is not None:
+                    suites[code] = info
 
-    sha1 = hashlib.sha1()
-    sha1.update(contents)
-    contents_hash = sha1.hexdigest()
+    sha256 = hashlib.sha256()
+    sha256.update(contents.encode('utf8'))
+    contents_hash = sha256.hexdigest()
 
     if options.save_download:
         out = open('tls-parameters.txt', 'w')
@@ -236,7 +242,9 @@ def main(args = None):
         out.close()
 
     def define_custom_ciphersuite(name, code):
-        suites[code] = to_ciphersuite_info(code, name)
+        info = to_ciphersuite_info(code, name)
+        if info is not None:
+            suites[code] = info
 
     if options.with_cecpq1:
         # CECPQ1 key exchange
@@ -247,18 +255,9 @@ def main(args = None):
 
     if options.with_ocb:
         # OCB ciphersuites draft-zauner-tls-aes-ocb-04
-        define_custom_ciphersuite('DHE_RSA_WITH_AES_128_OCB_SHA256', 'FFC0')
-        define_custom_ciphersuite('DHE_RSA_WITH_AES_256_OCB_SHA256', 'FFC1')
-        define_custom_ciphersuite('ECDHE_RSA_WITH_AES_128_OCB_SHA256', 'FFC2')
         define_custom_ciphersuite('ECDHE_RSA_WITH_AES_256_OCB_SHA256', 'FFC3')
-        define_custom_ciphersuite('ECDHE_ECDSA_WITH_AES_128_OCB_SHA256', 'FFC4')
         define_custom_ciphersuite('ECDHE_ECDSA_WITH_AES_256_OCB_SHA256', 'FFC5')
-
-        define_custom_ciphersuite('PSK_WITH_AES_128_OCB_SHA256', 'FFC6')
         define_custom_ciphersuite('PSK_WITH_AES_256_OCB_SHA256', 'FFC7')
-        define_custom_ciphersuite('DHE_PSK_WITH_AES_128_OCB_SHA256', 'FFC8')
-        define_custom_ciphersuite('DHE_PSK_WITH_AES_256_OCB_SHA256', 'FFC9')
-        define_custom_ciphersuite('ECDHE_PSK_WITH_AES_128_OCB_SHA256', 'FFCA')
         define_custom_ciphersuite('ECDHE_PSK_WITH_AES_256_OCB_SHA256', 'FFCB')
 
     if options.with_cecpq1 and options.with_ocb:
@@ -267,19 +266,6 @@ def main(args = None):
         define_custom_ciphersuite('CECPQ1_ECDSA_WITH_AES_256_OCB_SHA256', 'FFCD')
         #define_custom_ciphersuite('CECPQ1_PSK_WITH_AES_256_OCB_SHA256', 'FFCE')
 
-    if options.with_srp_aead:
-        # SRP using GCM or OCB - Botan extension
-        define_custom_ciphersuite('SRP_SHA_WITH_AES_256_GCM_SHA384', 'FFA0')
-        define_custom_ciphersuite('SRP_SHA_RSA_WITH_AES_256_GCM_SHA384', 'FFA1')
-        define_custom_ciphersuite('SRP_SHA_DSS_WITH_AES_256_GCM_SHA384', 'FFA2')
-        define_custom_ciphersuite('SRP_SHA_ECDSA_WITH_AES_256_GCM_SHA384', 'FFA3')
-
-        if options.with_ocb:
-            define_custom_ciphersuite('SRP_SHA_WITH_AES_256_OCB_SHA256', 'FFA4')
-            define_custom_ciphersuite('SRP_SHA_RSA_WITH_AES_256_OCB_SHA256', 'FFA5')
-            define_custom_ciphersuite('SRP_SHA_DSS_WITH_AES_256_OCB_SHA256', 'FFA6')
-            define_custom_ciphersuite('SRP_SHA_ECDSA_WITH_AES_256_OCB_SHA256', 'FFA7')
-
     suite_info = ''
 
     def header():
@@ -287,7 +273,7 @@ def main(args = None):
 * TLS cipher suite information
 *
 * This file was automatically generated from the IANA assignments
-* (tls-parameters.txt hash %s)
+* (tls-parameters.txt sha256 %s)
 * by %s on %s
 *
 * Botan is released under the Simplified BSD License (see license.txt)
@@ -299,9 +285,7 @@ def main(args = None):
 
     suite_info += """#include <botan/tls_ciphersuite.h>
 
-namespace Botan {
-
-namespace TLS {
+namespace Botan::TLS {
 
 //static
 const std::vector<Ciphersuite>& Ciphersuite::all_known_ciphersuites()
@@ -325,12 +309,10 @@ const std::vector<Ciphersuite>& Ciphersuite::all_known_ciphersuites()
    }
 
 }
-
-}
 """
 
     if options.output == '-':
-        print suite_info,
+        print(suite_info)
     else:
         out = open(options.output, 'w')
         out.write(suite_info)

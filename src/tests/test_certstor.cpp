@@ -10,6 +10,7 @@
 #if defined(BOTAN_HAS_X509_CERTIFICATES)
    #include <botan/x509cert.h>
    #include <botan/certstor.h>
+   #include <botan/pkix_types.h>
    #include <botan/internal/filesystem.h>
    #include <botan/pkcs8.h>
    #include <botan/pk_keys.h>
@@ -87,8 +88,8 @@ Test::Result test_certstor_sqlite3_insert_find_remove_test(const std::vector<Cer
                }
             else
                {
-               const bool found = std::any_of(rev_certs.begin(),
-               rev_certs.end(), [&](std::shared_ptr<const Botan::X509_Certificate> c) { return c->fingerprint() == cert.fingerprint(); });
+               const bool found = std::any_of(rev_certs.begin(), rev_certs.end(),
+                                              [&](const Botan::X509_Certificate& c) { return c.fingerprint() == cert.fingerprint(); });
 
                result.test_eq("Got wrong/no certificate", found, true);
                }
@@ -134,9 +135,9 @@ Test::Result test_certstor_sqlite3_crl_test(const std::vector<CertificateAndKey>
          store.insert_cert(a.certificate);
          }
 
-      store.revoke_cert(certsandkeys[0].certificate, Botan::CA_COMPROMISE);
-      store.revoke_cert(certsandkeys[3].certificate, Botan::CA_COMPROMISE);
-      store.revoke_cert(certsandkeys[3].certificate, Botan::CA_COMPROMISE);
+      store.revoke_cert(certsandkeys[0].certificate, Botan::CRL_Code::CA_COMPROMISE);
+      store.revoke_cert(certsandkeys[3].certificate, Botan::CRL_Code::CA_COMPROMISE);
+      store.revoke_cert(certsandkeys[3].certificate, Botan::CRL_Code::CA_COMPROMISE);
 
          {
          const auto crls = store.generate_crls();
@@ -246,7 +247,7 @@ Test::Result test_certstor_sqlite3_find_all_certs_test(const std::vector<Certifi
             std::stringstream a_ss;
             a_ss << a.certificate.subject_dn();
             std::stringstream res_ss;
-            res_ss << res_vec.at(0)->subject_dn();
+            res_ss << res_vec.at(0).subject_dn();
             result.test_eq("Check subject " + a_ss.str(), a_ss.str(), res_ss.str());
             }
          }
@@ -270,10 +271,10 @@ Test::Result test_certstor_sqlite3_find_all_certs_test(const std::vector<Certifi
          std::stringstream cert_ss;
          cert_ss << same_dn_1.subject_dn();
          std::stringstream res_ss;
-         res_ss << res_vec.at(0)->subject_dn();
+         res_ss << res_vec.at(0).subject_dn();
          result.test_eq("Check subject " + cert_ss.str(), cert_ss.str(), res_ss.str());
          res_ss.str("");
-         res_ss << res_vec.at(1)->subject_dn();
+         res_ss << res_vec.at(1).subject_dn();
          result.test_eq("Check subject " + cert_ss.str(), cert_ss.str(), res_ss.str());
          }
       }
@@ -348,8 +349,8 @@ Test::Result test_certstor_load_allcert()
       Botan::X509_Certificate root_cert(Test::data_dir() + "/x509/x509test/root.pem");
       Botan::X509_Certificate valid_cert(Test::data_dir() + "/x509/x509test/ValidCert.pem");
       std::vector<uint8_t> key_id;
-      result.confirm("Root cert found", store.find_cert(root_cert.subject_dn(), key_id) != nullptr);
-      result.confirm("ValidCert found", store.find_cert(valid_cert.subject_dn(), key_id) != nullptr);
+      result.confirm("Root cert found", store.find_cert(root_cert.subject_dn(), key_id) != std::nullopt);
+      result.confirm("ValidCert found", store.find_cert(valid_cert.subject_dn(), key_id) != std::nullopt);
       return result;
       }
    catch(std::exception& e)
@@ -394,14 +395,14 @@ class Certstor_Tests final : public Test
             return {result};
             }
 
-         auto& rng = Test::rng();
          std::vector<CertificateAndKey> certsandkeys;
 
          for(const auto& certandkey_filenames : certsandkeys_filenames)
             {
             const Botan::X509_Certificate certificate(test_dir + "/" + certandkey_filenames.certificate);
-            std::shared_ptr<Botan::Private_Key> private_key(Botan::PKCS8::load_key(test_dir + "/" +
-                  certandkey_filenames.private_key, rng));
+
+            Botan::DataSource_Stream key_stream(test_dir + "/" + certandkey_filenames.private_key);
+            std::shared_ptr<Botan::Private_Key> private_key = Botan::PKCS8::load_key(key_stream);
 
             if(!private_key)
                {
@@ -427,7 +428,7 @@ class Certstor_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("certstor", Certstor_Tests);
+BOTAN_REGISTER_TEST("x509", "certstor", Certstor_Tests);
 #endif
 }
 }

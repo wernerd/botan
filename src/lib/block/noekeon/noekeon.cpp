@@ -5,10 +5,10 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/noekeon.h>
-#include <botan/loadstor.h>
-#include <botan/rotate.h>
-#include <botan/cpuid.h>
+#include <botan/internal/noekeon.h>
+#include <botan/internal/loadstor.h>
+#include <botan/internal/rotate.h>
+#include <botan/internal/cpuid.h>
 
 namespace Botan {
 
@@ -59,7 +59,7 @@ inline void theta(uint32_t& A0, uint32_t& A1,
 */
 inline void gamma(uint32_t& A0, uint32_t& A1, uint32_t& A2, uint32_t& A3)
    {
-   A1 ^= ~A3 & ~A2;
+   A1 ^= ~(A2 | A3);
    A0 ^= A2 & A1;
 
    uint32_t T = A3;
@@ -68,7 +68,7 @@ inline void gamma(uint32_t& A0, uint32_t& A1, uint32_t& A2, uint32_t& A3)
 
    A2 ^= A0 ^ A1 ^ A3;
 
-   A1 ^= ~A3 & ~A2;
+   A1 ^= ~(A2 | A3);
    A0 ^= A2 & A1;
    }
 

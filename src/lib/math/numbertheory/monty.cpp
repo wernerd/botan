@@ -4,11 +4,40 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/monty.h>
+#include <botan/internal/monty.h>
 #include <botan/reducer.h>
 #include <botan/internal/mp_core.h>
 
 namespace Botan {
+
+word monty_inverse(word a)
+   {
+   if(a % 2 == 0)
+      throw Invalid_Argument("monty_inverse only valid for odd integers");
+
+   /*
+   * From "A New Algorithm for Inversion mod p^k" by Çetin Kaya Koç
+   * https://eprint.iacr.org/2017/411.pdf sections 5 and 7.
+   */
+
+   word b = 1;
+   word r = 0;
+
+   for(size_t i = 0; i != BOTAN_MP_WORD_BITS; ++i)
+      {
+      const word bi = b % 2;
+      r >>= 1;
+      r += bi << (BOTAN_MP_WORD_BITS - 1);
+
+      b -= a * bi;
+      b >>= 1;
+      }
+
+   // Now invert in addition space
+   r = (MP_WORD_MAX - r) + 1;
+
+   return r;
+   }
 
 Montgomery_Params::Montgomery_Params(const BigInt& p,
                                      const Modular_Reducer& mod_p)
@@ -29,8 +58,7 @@ Montgomery_Params::Montgomery_Params(const BigInt& p,
 
 Montgomery_Params::Montgomery_Params(const BigInt& p)
    {
-
-   if(p.is_negative() || p.is_even())
+   if(p.is_even() || p < 3)
       throw Invalid_Argument("Montgomery_Params invalid modulus");
 
    m_p = p;

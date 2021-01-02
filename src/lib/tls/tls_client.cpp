@@ -68,64 +68,15 @@ Client::Client(Callbacks& callbacks,
                RandomNumberGenerator& rng,
                const Server_Information& info,
                const Protocol_Version& offer_version,
-               const std::vector<std::string>& next_protos,
+               const std::vector<std::string>& next_protocols,
                size_t io_buf_sz) :
    Channel(callbacks, session_manager, rng, policy,
            false, offer_version.is_datagram_protocol(), io_buf_sz),
    m_creds(creds),
    m_info(info)
    {
-   init(offer_version, next_protos);
-   }
-
-Client::Client(output_fn data_output_fn,
-               data_cb proc_cb,
-               alert_cb recv_alert_cb,
-               handshake_cb hs_cb,
-               Session_Manager& session_manager,
-               Credentials_Manager& creds,
-               const Policy& policy,
-               RandomNumberGenerator& rng,
-               const Server_Information& info,
-               const Protocol_Version& offer_version,
-               const std::vector<std::string>& next_protos,
-               size_t io_buf_sz) :
-   Channel(data_output_fn, proc_cb, recv_alert_cb, hs_cb, Channel::handshake_msg_cb(),
-           session_manager, rng, policy, false, offer_version.is_datagram_protocol(), io_buf_sz),
-   m_creds(creds),
-   m_info(info)
-   {
-   init(offer_version, next_protos);
-   }
-
-Client::Client(output_fn data_output_fn,
-               data_cb proc_cb,
-               alert_cb recv_alert_cb,
-               handshake_cb hs_cb,
-               handshake_msg_cb hs_msg_cb,
-               Session_Manager& session_manager,
-               Credentials_Manager& creds,
-               const Policy& policy,
-               RandomNumberGenerator& rng,
-               const Server_Information& info,
-               const Protocol_Version& offer_version,
-               const std::vector<std::string>& next_protos) :
-   Channel(data_output_fn, proc_cb, recv_alert_cb, hs_cb, hs_msg_cb,
-           session_manager, rng, policy, false, offer_version.is_datagram_protocol()),
-   m_creds(creds),
-   m_info(info)
-   {
-   init(offer_version, next_protos);
-   }
-
-void Client::init(const Protocol_Version& protocol_version,
-                  const std::vector<std::string>& next_protocols)
-   {
-   const std::string srp_identifier = m_creds.srp_identifier("tls-client", m_info.hostname());
-
-   Handshake_State& state = create_handshake_state(protocol_version);
-   send_client_hello(state, false, protocol_version,
-                     srp_identifier, next_protocols);
+   Handshake_State& state = create_handshake_state(offer_version);
+   send_client_hello(state, false, offer_version, next_protocols);
    }
 
 Handshake_State* Client::new_handshake_state(Handshake_IO* io)
@@ -159,7 +110,6 @@ void Client::initiate_handshake(Handshake_State& state,
 void Client::send_client_hello(Handshake_State& state_base,
                                bool force_full_renegotiation,
                                Protocol_Version version,
-                               const std::string& srp_identifier,
                                const std::vector<std::string>& next_protocols)
    {
    Client_Handshake_State& state = dynamic_cast<Client_Handshake_State&>(state_base);
@@ -186,27 +136,24 @@ void Client::send_client_hello(Handshake_State& state_base,
 
          if(policy().acceptable_ciphersuite(session_info->ciphersuite()) && session_version_ok)
             {
-            if(srp_identifier == "" || session_info->srp_identifier() == srp_identifier)
-               {
-               state.client_hello(
-                  new Client_Hello(state.handshake_io(),
-                                   state.hash(),
-                                   policy(),
-                                   callbacks(),
-                                   rng(),
-                                   secure_renegotiation_data_for_client_hello(),
-                                   *session_info,
-                                   next_protocols));
+            state.client_hello(
+               new Client_Hello(state.handshake_io(),
+                                state.hash(),
+                                policy(),
+                                callbacks(),
+                                rng(),
+                                secure_renegotiation_data_for_client_hello(),
+                                *session_info,
+                                next_protocols));
 
-               state.resumed_session = std::move(session_info);
-               }
+            state.resumed_session = std::move(session_info);
             }
          }
       }
 
    if(!state.client_hello()) // not resuming
       {
-      Client_Hello::Settings client_settings(version, m_info.hostname(), srp_identifier);
+      Client_Hello::Settings client_settings(version, m_info.hostname());
       state.client_hello(new Client_Hello(
          state.handshake_io(),
          state.hash(),
@@ -617,6 +564,11 @@ void Client::process_handshake_msg(const Handshake_State* active_state,
       {
       state.server_hello_done(new Server_Hello_Done(contents));
 
+      if(state.handshake_io().have_more_data())
+         throw TLS_Exception(Alert::UNEXPECTED_MESSAGE,
+                             "Have data remaining in buffer after ServerHelloDone");
+
+
       if(state.server_certs() != nullptr &&
          state.server_hello()->supports_certificate_status_message())
          {
@@ -624,11 +576,11 @@ void Client::process_handshake_msg(const Handshake_State* active_state,
             {
             auto trusted_CAs = m_creds.trusted_certificate_authorities("tls-client", m_info.hostname());
 
-            std::vector<std::shared_ptr<const OCSP::Response>> ocsp;
+            std::vector<std::optional<OCSP::Response>> ocsp;
             if(state.server_cert_status() != nullptr)
                {
                try {
-                   ocsp.push_back(std::make_shared<OCSP::Response>(state.server_cert_status()->response()));
+                  ocsp.push_back(OCSP::Response(state.server_cert_status()->response()));
                }
                catch(Decoding_Error&)
                   {
@@ -722,6 +674,10 @@ void Client::process_handshake_msg(const Handshake_State* active_state,
       }
    else if(type == FINISHED)
       {
+      if(state.handshake_io().have_more_data())
+         throw TLS_Exception(Alert::UNEXPECTED_MESSAGE,
+                             "Have data remaining in buffer after Finished");
+
       state.server_finished(new Finished(contents));
 
       if(!state.server_finished()->verify(state, SERVER))
@@ -730,8 +686,9 @@ void Client::process_handshake_msg(const Handshake_State* active_state,
 
       state.hash().update(state.handshake_io().format(contents, type));
 
-      if(!state.client_finished()) // session resume case
+      if(!state.client_finished())
          {
+         // session resume case
          state.handshake_io().send(Change_Cipher_Spec());
          change_cipher_spec_writer(CLIENT);
          state.client_finished(new Finished(state.handshake_io(), state, CLIENT));
@@ -755,7 +712,6 @@ void Client::process_handshake_msg(const Handshake_State* active_state,
          get_peer_cert_chain(state),
          session_ticket,
          m_info,
-         "",
          state.server_hello()->srtp_profile()
          );
 

@@ -4,8 +4,6 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#define BOTAN_NO_DEPRECATED_WARNINGS
-
 #include "tests.h"
 
 #if defined(BOTAN_HAS_ASN1)
@@ -22,11 +20,11 @@ Test::Result test_add_have_OID()
    {
    Test::Result result("OID add");
 
-   result.test_eq("there is no OID 'botan-test-oid1'", Botan::OIDS::have_oid("botan-test-oid1"), false);
+   result.test_eq("there is no OID 'botan-test-oid1'", Botan::OIDS::str2oid_or_empty("botan-test-oid1").has_value(), false);
 
    Botan::OIDS::add_oid(Botan::OID("1.2.345.6.666"), "botan-test-oid1");
 
-   result.test_eq("OID 'botan-test-oid1' added successfully", Botan::OIDS::have_oid("botan-test-oid1"), true);
+   result.test_eq("OID 'botan-test-oid1' added successfully", Botan::OIDS::str2oid_or_empty("botan-test-oid1").has_value(), true);
 
    result.test_eq("name of OID '1.2.345.6.666' is 'botan-test-oid1'",
                   Botan::OIDS::oid2str_or_throw(Botan::OID("1.2.345.6.666")), "botan-test-oid1");
@@ -38,11 +36,11 @@ Test::Result test_add_have_OID_str()
    {
    Test::Result result("OID add string");
 
-   result.test_eq("there is no OID 'botan-test-oid2'", Botan::OIDS::have_oid("botan-test-oid2"), false);
+   result.test_eq("there is no OID 'botan-test-oid2'", Botan::OIDS::str2oid_or_empty("botan-test-oid2").has_value(), false);
 
    Botan::OIDS::add_oidstr("1.2.345.6.777", "botan-test-oid2");
 
-   result.test_eq("OID 'botan-test-oid2' added successfully", Botan::OIDS::have_oid("botan-test-oid2"), true);
+   result.test_eq("OID 'botan-test-oid2' added successfully", Botan::OIDS::str2oid_or_empty("botan-test-oid2").has_value(), true);
 
    result.test_eq("name of OID '1.2.345.6.777' is 'botan-test-oid2'",
                   Botan::OIDS::oid2str_or_throw(Botan::OID("1.2.345.6.777")), "botan-test-oid2");
@@ -106,7 +104,7 @@ class OID_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("oid", OID_Tests);
+BOTAN_REGISTER_TEST("asn1", "oid", OID_Tests);
 
 #endif
 

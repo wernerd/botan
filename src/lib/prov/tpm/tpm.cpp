@@ -8,10 +8,10 @@
 #include <botan/tpm.h>
 #include <botan/rsa.h>
 #include <botan/hash.h>
-#include <botan/hash_id.h>
+#include <botan/internal/hash_id.h>
 #include <botan/der_enc.h>
-#include <botan/workfactor.h>
-#include <botan/pk_ops.h>
+#include <botan/internal/workfactor.h>
+#include <botan/internal/pk_ops.h>
 #include <sstream>
 
 #include <tss/platform.h>
@@ -354,7 +354,7 @@ std::vector<uint8_t> TPM_PrivateKey::public_key_bits() const
    {
    std::vector<uint8_t> bits;
    DER_Encoder(bits)
-      .start_cons(SEQUENCE)
+      .start_sequence()
         .encode(get_n())
         .encode(get_e())
       .end_cons();

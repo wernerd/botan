@@ -7,9 +7,9 @@
 #include "tests.h"
 
 #if defined(BOTAN_HAS_HASH_ID) && defined(BOTAN_HAS_ASN1)
-  #include <botan/hash_id.h>
+  #include <botan/internal/hash_id.h>
   #include <botan/der_enc.h>
-  #include <botan/alg_id.h>
+  #include <botan/asn1_obj.h>
 #endif
 
 namespace Botan_Tests {
@@ -35,7 +35,6 @@ class PKCS_HashID_Test final : public Test
             {"SHA-3(384)", 48},
             {"SHA-3(512)", 64},
             {"SM3", 32},
-            {"Tiger(24,3)", 24}
          };
 
          std::vector<Test::Result> results;
@@ -57,7 +56,7 @@ class PKCS_HashID_Test final : public Test
 
                std::vector<uint8_t> bits;
                Botan::DER_Encoder der(bits);
-               der.start_cons(Botan::SEQUENCE).encode(alg).encode(dummy_hash, Botan::OCTET_STRING).end_cons();
+               der.start_sequence().encode(alg).encode(dummy_hash, Botan::ASN1_Tag::OCTET_STRING).end_cons();
 
                result.test_eq("Dummy hash is expected size", bits.size() - pkcs_id.size(), dummy_hash.size());
 
@@ -87,7 +86,7 @@ class PKCS_HashID_Test final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs_hash_id", PKCS_HashID_Test);
+BOTAN_REGISTER_TEST("pubkey", "pkcs_hash_id", PKCS_HashID_Test);
 #endif
 
 }

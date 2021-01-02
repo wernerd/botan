@@ -5,19 +5,25 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/sp800_108.h>
-#include <botan/loadstor.h>
+#include <botan/internal/sp800_108.h>
+#include <botan/internal/loadstor.h>
 #include <botan/exceptn.h>
 #include <iterator>
 
 namespace Botan {
 
-size_t SP800_108_Counter::kdf(uint8_t key[], size_t key_len,
+void SP800_108_Counter::kdf(uint8_t key[], size_t key_len,
                               const uint8_t secret[], size_t secret_len,
                               const uint8_t salt[], size_t salt_len,
                               const uint8_t label[], size_t label_len) const
    {
    const std::size_t prf_len =  m_prf->output_length();
+
+   const uint64_t blocks_required = (key_len + prf_len - 1) / prf_len;
+
+   if(blocks_required > 0xFFFFFFFF)
+      throw Invalid_Argument("SP800_108_Counter output size too large");
+
    const uint8_t delim = 0;
    const uint32_t length = static_cast<uint32_t>(key_len * 8);
 
@@ -29,7 +35,7 @@ size_t SP800_108_Counter::kdf(uint8_t key[], size_t key_len,
    store_be(length, be_len);
    m_prf->set_key(secret, secret_len);
 
-   while(p < key + key_len && counter != 0)
+   while(p < key + key_len)
       {
       const std::size_t to_copy = std::min< std::size_t >(key + key_len - p, prf_len);
       uint8_t be_cnt[4] = { 0 };
@@ -47,14 +53,11 @@ size_t SP800_108_Counter::kdf(uint8_t key[], size_t key_len,
       p += to_copy;
 
       ++counter;
-      if(counter == 0)
-         throw Invalid_Argument("Can't process more than 4GB");
+      BOTAN_ASSERT(counter != 0, "No counter overflow");
       }
-
-   return key_len;
    }
 
-size_t SP800_108_Feedback::kdf(uint8_t key[], size_t key_len,
+void SP800_108_Feedback::kdf(uint8_t key[], size_t key_len,
                                const uint8_t secret[], size_t secret_len,
                                const uint8_t salt[], size_t salt_len,
                                const uint8_t label[], size_t label_len) const
@@ -63,6 +66,11 @@ size_t SP800_108_Feedback::kdf(uint8_t key[], size_t key_len,
    const std::size_t prf_len =  m_prf->output_length();
    const std::size_t iv_len = (salt_len >= prf_len ? prf_len : 0);
    const uint8_t delim = 0;
+
+   const uint64_t blocks_required = (key_len + prf_len - 1) / prf_len;
+
+   if(blocks_required > 0xFFFFFFFF)
+      throw Invalid_Argument("SP800_108_Feedback output size too large");
 
    uint8_t *p = key;
    uint32_t counter = 1;
@@ -73,7 +81,7 @@ size_t SP800_108_Feedback::kdf(uint8_t key[], size_t key_len,
    store_be(length, be_len);
    m_prf->set_key(secret, secret_len);
 
-   while(p < key + key_len && counter != 0)
+   while(p < key + key_len)
       {
       const std::size_t to_copy = std::min< std::size_t >(key + key_len - p, prf_len);
       uint8_t be_cnt[4] = { 0 };
@@ -93,14 +101,11 @@ size_t SP800_108_Feedback::kdf(uint8_t key[], size_t key_len,
 
       ++counter;
 
-      if(counter == 0)
-         throw Invalid_Argument("Can't process more than 4GB");
+      BOTAN_ASSERT(counter != 0, "No overflow");
       }
-
-   return key_len;
    }
 
-size_t SP800_108_Pipeline::kdf(uint8_t key[], size_t key_len,
+void SP800_108_Pipeline::kdf(uint8_t key[], size_t key_len,
                                const uint8_t secret[], size_t secret_len,
                                const uint8_t salt[], size_t salt_len,
                                const uint8_t label[], size_t label_len) const
@@ -108,6 +113,11 @@ size_t SP800_108_Pipeline::kdf(uint8_t key[], size_t key_len,
    const uint32_t length = static_cast<uint32_t>(key_len * 8);
    const std::size_t prf_len =  m_prf->output_length();
    const uint8_t delim = 0;
+
+   const uint64_t blocks_required = (key_len + prf_len - 1) / prf_len;
+
+   if(blocks_required > 0xFFFFFFFF)
+      throw Invalid_Argument("SP800_108_Feedback output size too large");
 
    uint8_t *p = key;
    uint32_t counter = 1;
@@ -123,7 +133,7 @@ size_t SP800_108_Pipeline::kdf(uint8_t key[], size_t key_len,
    std::copy(salt,salt + salt_len,std::back_inserter(ai));
    std::copy(be_len,be_len + 4,std::back_inserter(ai));
 
-   while(p < key + key_len && counter != 0)
+   while(p < key + key_len)
       {
       // A(i)
       m_prf->update(ai);
@@ -148,10 +158,7 @@ size_t SP800_108_Pipeline::kdf(uint8_t key[], size_t key_len,
 
       ++counter;
 
-      if(counter == 0)
-         throw Invalid_Argument("Can't process more than 4GB");
+      BOTAN_ASSERT(counter != 0, "No overflow");
       }
-
-   return key_len;
    }
 }

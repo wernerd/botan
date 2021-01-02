@@ -4,13 +4,11 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#define BOTAN_NO_DEPRECATED_WARNINGS
-
 #include "tests.h"
 
 #if defined(BOTAN_HAS_DL_GROUP)
    #include <botan/dl_group.h>
-   #include <botan/workfactor.h>
+   #include <botan/internal/workfactor.h>
 #endif
 
 namespace Botan_Tests {
@@ -58,19 +56,15 @@ class DL_Group_Tests final : public Test
 
          const Botan::DL_Group orig("modp/ietf/1024");
 
-         const std::string pem1 = orig.PEM_encode(Botan::DL_Group::ANSI_X9_42);
-         const std::string pem2 = orig.PEM_encode(Botan::DL_Group::ANSI_X9_57);
-         const std::string pem3 = orig.PEM_encode(Botan::DL_Group::PKCS_3);
+         const std::string pem1 = orig.PEM_encode(Botan::DL_Group_Format::ANSI_X9_42);
+         const std::string pem2 = orig.PEM_encode(Botan::DL_Group_Format::ANSI_X9_57);
+         const std::string pem3 = orig.PEM_encode(Botan::DL_Group_Format::PKCS_3);
 
          Botan::DL_Group group1(pem1);
 
          result.test_eq("Same p in X9.42 decoding", group1.get_p(), orig.get_p());
          result.test_eq("Same q in X9.42 decoding", group1.get_q(), orig.get_q());
          result.test_eq("Same g in X9.42 decoding", group1.get_g(), orig.get_g());
-
-         result.test_eq("PEM encodings match",
-                        group1.PEM_encode(Botan::DL_Group::ANSI_X9_42),
-                        Botan::DL_Group::PEM_for_named_group("modp/ietf/1024"));
 
          Botan::DL_Group group2(pem2);
 
@@ -88,7 +82,7 @@ class DL_Group_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("dl_group", DL_Group_Tests);
+BOTAN_REGISTER_TEST("pubkey", "dl_group", DL_Group_Tests);
 
 class DL_Generate_Group_Tests final : public Test
    {
@@ -163,7 +157,7 @@ class DL_Generate_Group_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("dl_group_gen", DL_Generate_Group_Tests);
+BOTAN_REGISTER_TEST("pubkey", "dl_group_gen", DL_Generate_Group_Tests);
 
 class DL_Named_Group_Tests final : public Test
    {
@@ -215,6 +209,8 @@ class DL_Named_Group_Tests final : public Test
             // 8192 bit ~~ 2**202 strength
             result.confirm("Plausible strength", strength >= 80 && strength < 210);
 
+            result.confirm("Expected source", group.source() == Botan::DL_Group_Source::Builtin);
+
             if(name.find("modp/srp/") == std::string::npos)
                {
                result.test_ne("DL_Group q is set", group.get_q(), 0);
@@ -224,9 +220,9 @@ class DL_Named_Group_Tests final : public Test
                result.test_eq("DL_Group q is not set for SRP groups", group.get_q(), 0);
                }
 
-            if(group.p_bits() < 2048 || Test::run_long_tests())
+            if(group.p_bits() <= 1536 || Test::run_long_tests())
                {
-               result.test_eq(name + " verifies", group.verify_group(Test::rng(), false), true);
+               result.test_eq(name + " strong verifies", group.verify_group(Test::rng(), true), true);
                }
 
             }
@@ -236,7 +232,7 @@ class DL_Named_Group_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("dl_group_named", DL_Named_Group_Tests);
+BOTAN_REGISTER_TEST("pubkey", "dl_group_named", DL_Named_Group_Tests);
 
 }
 

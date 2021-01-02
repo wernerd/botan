@@ -7,11 +7,7 @@
 
 #include <botan/pbkdf.h>
 #include <botan/exceptn.h>
-#include <botan/scan_name.h>
-
-#if defined(BOTAN_HAS_PBKDF1)
-#include <botan/pbkdf1.h>
-#endif
+#include <botan/internal/scan_name.h>
 
 #if defined(BOTAN_HAS_PBKDF2)
 #include <botan/pbkdf2.h>
@@ -35,23 +31,14 @@ std::unique_ptr<PBKDF> PBKDF::create(const std::string& algo_spec,
 
       if(provider.empty() || provider == "base")
          {
-         if(auto mac = MessageAuthenticationCode::create(req.arg(0)))
+         if(auto mac = MessageAuthenticationCode::create("HMAC(" + req.arg(0) + ")"))
             return std::unique_ptr<PBKDF>(new PKCS5_PBKDF2(mac.release()));
 
-         if(auto mac = MessageAuthenticationCode::create("HMAC(" + req.arg(0) + ")"))
+         if(auto mac = MessageAuthenticationCode::create(req.arg(0)))
             return std::unique_ptr<PBKDF>(new PKCS5_PBKDF2(mac.release()));
          }
 
       return nullptr;
-      }
-#endif
-
-#if defined(BOTAN_HAS_PBKDF1)
-   if(req.algo_name() == "PBKDF1" && req.arg_count() == 1)
-      {
-      if(auto hash = HashFunction::create(req.arg(0)))
-         return std::unique_ptr<PBKDF>(new PKCS5_PBKDF1(hash.release()));
-
       }
 #endif
 

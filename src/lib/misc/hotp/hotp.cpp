@@ -5,8 +5,8 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/hotp.h>
-#include <botan/loadstor.h>
+#include <botan/otp.h>
+#include <botan/internal/loadstor.h>
 #include <botan/exceptn.h>
 
 namespace Botan {

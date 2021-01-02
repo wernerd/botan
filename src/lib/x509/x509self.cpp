@@ -6,6 +6,7 @@
 */
 
 #include <botan/x509self.h>
+#include <botan/x509_key.h>
 #include <botan/x509_ext.h>
 #include <botan/x509_ca.h>
 #include <botan/der_enc.h>
@@ -35,7 +36,7 @@ void load_info(const X509_Cert_Options& opts, X509_DN& subject_dn,
    subject_dn.add_attribute("X520.SerialNumber", opts.serial_number);
    subject_alt = AlternativeName(opts.email, opts.uri, opts.dns, opts.ip);
    subject_alt.add_othername(OID::from_string("PKIX.XMPPAddr"),
-                             opts.xmpp, UTF8_STRING);
+                             opts.xmpp, ASN1_Tag::UTF8_STRING);
 
    for(auto dns : opts.more_dns)
       subject_alt.add_attribute("DNS", dns);

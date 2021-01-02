@@ -7,7 +7,7 @@
 
 #include <botan/tls_ciphersuite.h>
 #include <botan/exceptn.h>
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 #include <botan/block_cipher.h>
 #include <botan/stream_cipher.h>
 #include <botan/hash.h>
@@ -70,7 +70,6 @@ bool Ciphersuite::is_scsv(uint16_t suite)
 bool Ciphersuite::psk_ciphersuite() const
    {
    return kex_method() == Kex_Algo::PSK ||
-          kex_method() == Kex_Algo::DHE_PSK ||
           kex_method() == Kex_Algo::ECDHE_PSK;
    }
 
@@ -100,8 +99,7 @@ bool Ciphersuite::cbc_ciphersuite() const
 
 bool Ciphersuite::signature_used() const
    {
-   return auth_method() != Auth_Method::ANONYMOUS &&
-          auth_method() != Auth_Method::IMPLICIT;
+   return auth_method() != Auth_Method::IMPLICIT;
    }
 
 Ciphersuite Ciphersuite::by_id(uint16_t suite)
@@ -200,19 +198,13 @@ bool Ciphersuite::is_usable() const
          return false;
       }
 
-   if(kex_method() == Kex_Algo::SRP_SHA)
-      {
-#if !defined(BOTAN_HAS_SRP6)
-      return false;
-#endif
-      }
-   else if(kex_method() == Kex_Algo::ECDH || kex_method() == Kex_Algo::ECDHE_PSK)
+   if(kex_method() == Kex_Algo::ECDH || kex_method() == Kex_Algo::ECDHE_PSK)
       {
 #if !defined(BOTAN_HAS_ECDH)
       return false;
 #endif
       }
-   else if(kex_method() == Kex_Algo::DH || kex_method() == Kex_Algo::DHE_PSK)
+   else if(kex_method() == Kex_Algo::DH)
       {
 #if !defined(BOTAN_HAS_DIFFIE_HELLMAN)
       return false;
@@ -225,13 +217,7 @@ bool Ciphersuite::is_usable() const
 #endif
       }
 
-   if(auth_method() == Auth_Method::DSA)
-      {
-#if !defined(BOTAN_HAS_DSA)
-      return false;
-#endif
-      }
-   else if(auth_method() == Auth_Method::ECDSA)
+   if(auth_method() == Auth_Method::ECDSA)
       {
 #if !defined(BOTAN_HAS_ECDSA)
       return false;

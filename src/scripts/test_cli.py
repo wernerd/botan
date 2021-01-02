@@ -119,11 +119,11 @@ def cli_config_tests(_tmp_dir):
 
     if len(prefix) < 4 or prefix[0] != '/':
         logging.error("Bad prefix %s" % (prefix))
-    if ("-I%s/include/botan-2" % (prefix)) not in cflags:
+    if ("-I%s/include/botan-3" % (prefix)) not in cflags:
         logging.error("Bad cflags %s" % (cflags))
     if not ldflags.endswith(("-L%s/lib" % (prefix))):
         logging.error("Bad ldflags %s" % (ldflags))
-    if "-lbotan-2" not in libs:
+    if "-lbotan-3" not in libs:
         logging.error("Bad libs %s" % (libs))
 
 def cli_help_tests(_tmp_dir):
@@ -136,12 +136,12 @@ def cli_help_tests(_tmp_dir):
 def cli_version_tests(_tmp_dir):
     output = test_cli("version", None, None)
 
-    version_re = re.compile(r'[0-9]\.[0-9]+\.[0-9]')
+    version_re = re.compile(r'[0-9]\.[0-9]+\.[0-9](\-[a-z]+[0-9]+)?')
     if not version_re.match(output):
         logging.error("Unexpected version output %s" % (output))
 
     output = test_cli("version", ["--full"], None, None)
-    version_full_re = re.compile(r'Botan [0-9]\.[0-9]+\.[0-9] \(.* revision .*, distribution .*\)$')
+    version_full_re = re.compile(r'Botan [0-9]\.[0-9]+\.[0-9](\-[a-z]+[0-9]+)? \(.* revision .*, distribution .*\)$')
     if not version_full_re.match(output):
         logging.error("Unexpected version output %s" % (output))
 
@@ -278,17 +278,17 @@ huVYFicDNQGzi+nEKAzrZ1L/VxtiSiw/qw0IyOuVtz8CFjgPiPatvmWssQw2AuZ9
 mFvAZ/8wal0=
 -----END X9.42 DH PARAMETERS-----"""
 
-    test_cli("gen_dl_group", "--pbits=1043", pem)
+    test_cli("gen_dl_group", ["--pbits=1043", "--qbits=174"], pem)
 
-    dsa_grp = """-----BEGIN X9.42 DH PARAMETERS-----
+    dsa_grp = """-----BEGIN DSA PARAMETERS-----
 MIIBHgKBgQCyP1vosC/axliM2hmJ9EOSdd1zBkuzMP25CYD8PFkRVrPLr1ClSUtn
 eXTIsHToJ7d7sRwtidQGW9BrvUEyiAWE06W/wnLPxB3/g2/l/P2EhbNmNHAO7rV7
-ZVz/uKR4Xcvzxg9uk5MpT1VsxA8H6VEwzefNF1Rya92rqGgBTNT3/wKBgC7HLL8A
-Gu3tqJxTk1iNgojjOiSreLn6ihA8R8kQnRXDTNtDKz996KHGInfMBurUI1zPM3xq
-bHc0CvU1Nf87enhPIretzJcFgiCWrNFUIC25zPEjp0s3/ERHT4Bi1TABZ3j6YUEQ
-fnnj+9XriKKHf2WtX0T4FXorvnKq30m934rzAhUAvwhWDK3yZEmphc7dwl4/J3Zp
-+MU=
------END X9.42 DH PARAMETERS-----"""
+ZVz/uKR4Xcvzxg9uk5MpT1VsxA8H6VEwzefNF1Rya92rqGgBTNT3/wIVAL8IVgyt
+8mRJqYXO3cJePyd2afjFAoGALscsvwAa7e2onFOTWI2CiOM6JKt4ufqKEDxHyRCd
+FcNM20MrP33oocYid8wG6tQjXM8zfGpsdzQK9TU1/zt6eE8it63MlwWCIJas0VQg
+LbnM8SOnSzf8REdPgGLVMAFnePphQRB+eeP71euIood/Za1fRPgVeiu+cqrfSb3f
+ivM=
+-----END DSA PARAMETERS-----"""
 
     test_cli("gen_dl_group", ["--type=dsa", "--pbits=1024"], dsa_grp)
 
@@ -679,7 +679,7 @@ def cli_pk_workfactor_tests(_tmp_dir):
     test_cli("pk_workfactor", "2048", "111")
     test_cli("pk_workfactor", ["--type=rsa", "512"], "58")
     test_cli("pk_workfactor", ["--type=dl", "512"], "58")
-    test_cli("pk_workfactor", ["--type=dl_exp", "512"], "128")
+    test_cli("pk_workfactor", ["--type=dl_exp", "512"], "192")
 
 def cli_dl_group_info_tests(_tmp_dir):
 
@@ -913,7 +913,7 @@ def cli_tls_http_server_tests(tmp_dir):
 
     body = str(resp.read())
 
-    if body.find('TLS negotiation with Botan 2.') < 0:
+    if body.find('TLS negotiation with Botan 3.') < 0:
         logging.error('Unexpected response body')
 
     conn.request("POST", "/logout")
@@ -1157,7 +1157,7 @@ def cli_speed_pbkdf_tests(_tmp_dir):
 def cli_speed_table_tests(_tmp_dir):
     msec = 1
 
-    version_re = re.compile(r'^Botan 2\.[0-9]+\.[0-9] \(.*, revision .*, distribution .*\)')
+    version_re = re.compile(r'^Botan 3\.[0-9]+\.[0-9](\-.*[0-9]+)? \(.*, revision .*, distribution .*\)')
     cpuid_re = re.compile(r'^CPUID: [a-z_0-9 ]*$')
     format_re = re.compile(r'^AES-128 .* buffer size [0-9]+ bytes: [0-9]+\.[0-9]+ MiB\/sec .*\([0-9]+\.[0-9]+ MiB in [0-9]+\.[0-9]+ ms\)')
     tbl_hdr_re = re.compile(r'^algo +operation +1024 bytes$')
@@ -1313,6 +1313,7 @@ def main(args=None):
     parser.add_option('--verbose', action='store_true', default=False)
     parser.add_option('--quiet', action='store_true', default=False)
     parser.add_option('--threads', action='store', type='int', default=0)
+    parser.add_option('--run-slow-tests', action='store_true', default=False)
 
     (options, args) = parser.parse_args(args)
 
@@ -1341,8 +1342,7 @@ def main(args=None):
             logging.error("Invalid regex: %s", str(e))
             return 1
 
-    # some of the slowest tests are grouped up front
-    test_fns = [
+    slow_test_fns = [
         cli_speed_tests,
         cli_speed_pk_tests,
         cli_speed_math_tests,
@@ -1350,7 +1350,9 @@ def main(args=None):
         cli_speed_table_tests,
         cli_speed_invalid_option_tests,
         cli_xmss_sign_tests,
+    ]
 
+    fast_test_fns = [
         cli_argon2_tests,
         cli_asn1_tests,
         cli_base32_tests,
@@ -1394,6 +1396,13 @@ def main(args=None):
         cli_uuid_tests,
         cli_version_tests,
         ]
+
+    test_fns = []
+
+    if options.run_slow_tests:
+        test_fns = slow_test_fns + fast_test_fns
+    else:
+        test_fns = fast_test_fns
 
     tests_to_run = []
     for fn in test_fns:

@@ -9,17 +9,22 @@
 #include <botan/sm2.h>
 #include <botan/internal/pk_ops_impl.h>
 #include <botan/internal/point_mul.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <botan/numthry.h>
-#include <botan/keypair.h>
+#include <botan/internal/keypair.h>
 #include <botan/hash.h>
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 
 namespace Botan {
 
 std::string SM2_PublicKey::algo_name() const
    {
    return "SM2";
+   }
+
+std::unique_ptr<Public_Key> SM2_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new SM2_Signature_PublicKey(domain(), public_point()));
    }
 
 bool SM2_PrivateKey::check_key(RandomNumberGenerator& rng,

@@ -10,7 +10,7 @@
 #if defined(BOTAN_HAS_OPENSSL) && defined(BOTAN_HAS_RC4)
 
 #include <botan/internal/openssl.h>
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 #include <botan/exceptn.h>
 #include <openssl/rc4.h>
 
@@ -67,7 +67,7 @@ class OpenSSL_RC4 final : public StreamCipher
 
       void key_schedule(const uint8_t key[], size_t length) override
          {
-         ::RC4_set_key(&m_rc4, length, key);
+         ::RC4_set_key(&m_rc4, static_cast<int>(length), key);
          uint8_t d = 0;
          for(size_t i = 0; i != m_skip; ++i)
             ::RC4(&m_rc4, 1, &d, &d);

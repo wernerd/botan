@@ -8,11 +8,11 @@
 #ifndef BOTAN_XMSS_INDEX_REGISTRY_H_
 #define BOTAN_XMSS_INDEX_REGISTRY_H_
 
-#include <botan/secmem.h>
-#include <botan/atomic.h>
-#include <botan/mutex.h>
+#include <string>
 
-//BOTAN_FUTURE_INTERNAL_HEADER(xmss_index_registry.h)
+#include <botan/secmem.h>
+#include <botan/internal/atomic.h>
+#include <botan/mutex.h>
 
 namespace Botan {
 

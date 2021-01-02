@@ -11,12 +11,12 @@
 #include <botan/ecdsa.h>
 #include <botan/internal/pk_ops_impl.h>
 #include <botan/internal/point_mul.h>
-#include <botan/keypair.h>
+#include <botan/internal/keypair.h>
 #include <botan/reducer.h>
-#include <botan/emsa.h>
+#include <botan/internal/emsa.h>
 
 #if defined(BOTAN_HAS_RFC6979_GENERATOR)
-  #include <botan/rfc6979.h>
+  #include <botan/internal/rfc6979.h>
 #endif
 
 #if defined(BOTAN_HAS_OPENSSL)
@@ -109,6 +109,11 @@ uint8_t ECDSA_PublicKey::recovery_param(const std::vector<uint8_t>& msg,
    throw Internal_Error("Could not determine ECDSA recovery parameter");
    }
 
+std::unique_ptr<Public_Key> ECDSA_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new ECDSA_PublicKey(domain(), public_point()));
+   }
+
 bool ECDSA_PrivateKey::check_key(RandomNumberGenerator& rng,
                                  bool strong) const
    {
@@ -138,7 +143,7 @@ class ECDSA_Signature_Operation final : public PK_Ops::Signature_with_EMSA
          m_x(ecdsa.private_value())
          {
 #if defined(BOTAN_HAS_RFC6979_GENERATOR)
-         m_rfc6979.reset(new RFC6979_Nonce_Generator(hash_for_emsa(emsa), m_group.get_order(), m_x));
+         m_rfc6979.reset(new RFC6979_Nonce_Generator(this->hash_for_signature(), m_group.get_order(), m_x));
 #endif
 
          m_b = m_group.random_scalar(rng);

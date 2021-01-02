@@ -16,12 +16,12 @@
 #include <botan/tls_algos.h>
 #include <botan/data_src.h>
 #include <botan/pkcs8.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <botan/oids.h>
 #include <botan/chacha_rng.h>
 #include <botan/base64.h>
 #include <botan/hex.h>
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 #include <botan/mem_ops.h>
 #include <iostream>
 #include <vector>
@@ -62,7 +62,7 @@ void shim_log(const std::string& s)
       }
    }
 
-void BOTAN_NORETURN shim_exit_with_error(const std::string& s, int rc = 1)
+[[noreturn]] void shim_exit_with_error(const std::string& s, int rc = 1)
    {
    shim_log("Exiting with " + s);
    std::cerr << s << "\n";
@@ -93,9 +93,11 @@ std::string map_to_bogo_error(const std::string& e)
          { "Certificate: Message malformed", ":DECODE_ERROR:" },
          { "Channel::key_material_export cannot export during renegotiation", "failed to export keying material" },
          { "Client cert verify failed", ":BAD_SIGNATURE:" },
+         { "Client certificate does not support signing", ":KEY_USAGE_BIT_INCORRECT:" },
          { "Client did not offer NULL compression", ":INVALID_COMPRESSION_LIST:" },
-         { "Client offered TLS version with major version under 3", ":UNSUPPORTED_PROTOCOL:" },
          { "Client offered DTLS version with major version 0xFF",  ":UNSUPPORTED_PROTOCOL:" },
+         { "Client offered SSLv3 which is not supported", ":UNSUPPORTED_PROTOCOL:" },
+         { "Client offered TLS version with major version under 3", ":UNSUPPORTED_PROTOCOL:" },
          { "Client policy prohibits insecure renegotiation", ":RENEGOTIATION_MISMATCH:" },
          { "Client policy prohibits renegotiation", ":NO_RENEGOTIATION:" },
          { "Client resumed extended ms session without sending extension", ":RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION:" },
@@ -110,6 +112,9 @@ std::string map_to_bogo_error(const std::string& e)
          { "Encoding error: Cannot encode PSS string, output length too small", ":NO_COMMON_SIGNATURE_ALGORITHMS:" },
          { "Expected TLS but got a record with DTLS version", ":WRONG_VERSION_NUMBER:" },
          { "Finished message didn't verify", ":DIGEST_CHECK_FAILED:" },
+         { "Have data remaining in buffer after ClientHello", ":EXCESS_HANDSHAKE_DATA:" },
+         { "Have data remaining in buffer after Finished", ":EXCESS_HANDSHAKE_DATA:" },
+         { "Have data remaining in buffer after ServerHelloDone", ":EXCESS_HANDSHAKE_DATA:" },
          { "Inconsistent length in certificate request", ":DECODE_ERROR:" },
          { "Inconsistent values in fragmented DTLS handshake header", ":FRAGMENT_MISMATCH:" },
          { "Invalid CertificateRequest: Length field outside parameters", ":DECODE_ERROR:" },
@@ -123,18 +128,19 @@ std::string map_to_bogo_error(const std::string& e)
          { "Invalid authentication tag: ChaCha20Poly1305 tag check failed", ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:" },
          { "Invalid authentication tag: GCM tag check failed", ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:" },
          { "Message authentication failure", ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:" },
-         { "No shared TLS version", ":UNSUPPORTED_PROTOCOL:" },
          { "No shared DTLS version", ":UNSUPPORTED_PROTOCOL:" },
+         { "No shared TLS version", ":UNSUPPORTED_PROTOCOL:" },
          { "OS2ECP: Unknown format type 251", ":BAD_ECPOINT:" },
-         { "Policy forbids all available TLS version", ":NO_SUPPORTED_VERSIONS_ENABLED:" },
          { "Policy forbids all available DTLS version", ":NO_SUPPORTED_VERSIONS_ENABLED:" },
+         { "Policy forbids all available TLS version", ":NO_SUPPORTED_VERSIONS_ENABLED:" },
          { "Policy refuses to accept signing with any hash supported by peer", ":NO_COMMON_SIGNATURE_ALGORITHMS:" },
          { "Policy requires client send a certificate, but it did not", ":PEER_DID_NOT_RETURN_A_CERTIFICATE:" },
          { "Received a record that exceeds maximum size", ":ENCRYPTED_LENGTH_TOO_LONG:" },
-         { "Received unexpected record version in initial record", ":WRONG_VERSION_NUMBER:" },
-         { "Received unexpected record version", ":WRONG_VERSION_NUMBER:" },
          { "Received application data after connection closure", ":APPLICATION_DATA_ON_SHUTDOWN:" },
          { "Received handshake data after connection closure", ":NO_RENEGOTIATION:" },
+         { "Received unexpected record version in initial record", ":WRONG_VERSION_NUMBER:" },
+         { "Received unexpected record version", ":WRONG_VERSION_NUMBER:" },
+         { "Server attempting to negotiate SSLv3 which is not supported", ":UNSUPPORTED_PROTOCOL:" },
          { "Server certificate changed during renegotiation", ":SERVER_CERT_CHANGED:" },
          { "Server changed its mind about extended master secret", ":RENEGOTIATION_EMS_MISMATCH:" },
          { "Server changed its mind about secure renegotiation", ":RENEGOTIATION_MISMATCH:" },
@@ -170,7 +176,6 @@ std::string map_to_bogo_error(const std::string& e)
          { "Test requires rejecting cert", ":CERTIFICATE_VERIFY_FAILED:" },
          { "Unexpected ALPN protocol", ":INVALID_ALPN_PROTOCOL:" },
          { "Unexpected record type 42 from counterparty", ":UNEXPECTED_RECORD:" },
-
          { "Unexpected state transition in handshake got a certificate_request expected server_hello_done seen server_hello+server_key_exchange", ":UNEXPECTED_MESSAGE:" },
          { "Unexpected state transition in handshake got a certificate_request expected server_key_exchange|server_hello_done seen server_hello", ":UNEXPECTED_MESSAGE:" },
          { "Unexpected state transition in handshake got a certificate_status expected certificate seen server_hello", ":UNEXPECTED_MESSAGE:" },
@@ -184,9 +189,8 @@ std::string map_to_bogo_error(const std::string& e)
          { "Unexpected state transition in handshake got a finished expected change_cipher_spec seen server_hello+certificate+certificate_status+server_key_exchange+server_hello_done+new_session_ticket", ":UNEXPECTED_RECORD:" },
          { "Unexpected state transition in handshake got a hello_request expected server_hello", ":UNEXPECTED_MESSAGE:" },
          { "Unexpected state transition in handshake got a server_hello_done expected server_key_exchange seen server_hello+certificate+certificate_status", ":UNEXPECTED_MESSAGE:" },
-         { "Unexpected state transition in handshake got a server_key_exchange not expecting messages", ":BAD_HELLO_REQUEST:" },
          { "Unexpected state transition in handshake got a server_key_exchange expected certificate_request|server_hello_done seen server_hello+certificate+certificate_status", ":UNEXPECTED_MESSAGE:" },
-
+         { "Unexpected state transition in handshake got a server_key_exchange not expecting messages", ":BAD_HELLO_REQUEST:" },
          { "Unknown TLS handshake message type 43", ":UNEXPECTED_MESSAGE:" },
          { "Unknown TLS handshake message type 44", ":UNEXPECTED_MESSAGE:" },
          { "Unknown TLS handshake message type 45", ":UNEXPECTED_MESSAGE:" },
@@ -804,6 +808,22 @@ class Shim_Policy final : public Botan::TLS::Policy
 
          }
 
+      std::vector<Botan::TLS::Signature_Scheme> acceptable_signature_schemes() const override
+         {
+         if(m_args.option_used("verify-prefs"))
+            {
+            std::vector<Botan::TLS::Signature_Scheme> schemes;
+            for(size_t pref : m_args.get_int_vec_opt("verify-prefs"))
+               {
+               schemes.push_back(static_cast<Botan::TLS::Signature_Scheme>(pref));
+               }
+
+            return schemes;
+            }
+
+         return Botan::TLS::Policy::acceptable_signature_schemes();
+         }
+
       std::vector<Botan::TLS::Signature_Scheme> allowed_signature_schemes() const override
          {
          if(m_args.option_used("signing-prefs"))
@@ -819,17 +839,6 @@ class Shim_Policy final : public Botan::TLS::Policy
                {
                schemes.push_back(Botan::TLS::Signature_Scheme::RSA_PKCS1_SHA256);
                schemes.push_back(Botan::TLS::Signature_Scheme::ECDSA_SHA256);
-               }
-
-            return schemes;
-            }
-
-         if(m_args.option_used("verify-prefs"))
-            {
-            std::vector<Botan::TLS::Signature_Scheme> schemes;
-            for(size_t pref : m_args.get_int_vec_opt("verify-prefs"))
-               {
-               schemes.push_back(static_cast<Botan::TLS::Signature_Scheme>(pref));
                }
 
             return schemes;
@@ -1009,8 +1018,7 @@ class Shim_Policy final : public Botan::TLS::Policy
          return true;
          }
 
-      std::vector<uint16_t> ciphersuite_list(Botan::TLS::Protocol_Version version,
-                                             bool have_srp) const override;
+      std::vector<uint16_t> ciphersuite_list(Botan::TLS::Protocol_Version version) const override;
 
       size_t dtls_default_mtu() const override
          {
@@ -1044,8 +1052,7 @@ class Shim_Policy final : public Botan::TLS::Policy
       size_t m_sessions;
    };
 
-std::vector<uint16_t> Shim_Policy::ciphersuite_list(Botan::TLS::Protocol_Version version,
-                                                    bool have_srp) const
+std::vector<uint16_t> Shim_Policy::ciphersuite_list(Botan::TLS::Protocol_Version version) const
    {
    std::vector<uint16_t> ciphersuite_codes;
 
@@ -1078,10 +1085,6 @@ std::vector<uint16_t> Shim_Policy::ciphersuite_list(Botan::TLS::Protocol_Version
          const auto suite = *i;
          // Can we use it?
          if(suite.valid() == false)
-            continue;
-
-         // Are we doing SRP?
-         if(!have_srp && suite.kex_method() == Botan::TLS::Kex_Algo::SRP_SHA)
             continue;
 
          if(cipher_limit != "")
@@ -1324,7 +1327,7 @@ class Shim_Callbacks final : public Botan::TLS::Callbacks
          }
 
       void tls_verify_cert_chain(const std::vector<Botan::X509_Certificate>& /*cert_chain*/,
-                                 const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& /*ocsp_responses*/,
+                                 const std::vector<std::optional<Botan::OCSP::Response>>& /*ocsp_responses*/,
                                  const std::vector<Botan::Certificate_Store*>& /*trusted_roots*/,
                                  Botan::Usage_Type /*usage*/,
                                  const std::string& /*hostname*/,
@@ -1338,10 +1341,13 @@ class Shim_Callbacks final : public Botan::TLS::Callbacks
                                             "Simulated OCSP callback failure");
             }
 
-         if(m_args.flag_set("verify-peer") && m_args.flag_set("verify-fail"))
+         if(m_args.flag_set("verify-fail"))
             {
-            throw Botan::TLS::TLS_Exception(Botan::TLS::Alert::BAD_CERTIFICATE,
-                                            "Test requires rejecting cert");
+            auto alert = Botan::TLS::Alert::HANDSHAKE_FAILURE;
+            if(m_args.flag_set("use-custom-verify-callback"))
+               alert = Botan::TLS::Alert::CERTIFICATE_UNKNOWN;
+
+            throw Botan::TLS::TLS_Exception(alert, "Test requires rejecting cert");
             }
          }
 

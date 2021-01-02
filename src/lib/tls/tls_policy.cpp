@@ -39,11 +39,15 @@ std::vector<Signature_Scheme> Policy::allowed_signature_schemes() const
    return schemes;
    }
 
+std::vector<Signature_Scheme> Policy::acceptable_signature_schemes() const
+   {
+   return this->allowed_signature_schemes();
+   }
+
 std::vector<std::string> Policy::allowed_ciphers() const
    {
    return {
       //"AES-256/OCB(12)",
-      //"AES-128/OCB(12)",
       "ChaCha20Poly1305",
       "AES-256/GCM",
       "AES-128/GCM",
@@ -57,9 +61,6 @@ std::vector<std::string> Policy::allowed_ciphers() const
       //"ARIA-128/GCM",
       //"AES-256",
       //"AES-128",
-      //"Camellia-256",
-      //"Camellia-128",
-      //"SEED",
       //"3DES",
       };
    }
@@ -92,9 +93,7 @@ std::vector<std::string> Policy::allowed_macs() const
 std::vector<std::string> Policy::allowed_key_exchange_methods() const
    {
    return {
-      //"SRP_SHA",
       //"ECDHE_PSK",
-      //"DHE_PSK",
       //"PSK",
       "CECPQ1",
       "ECDH",
@@ -110,7 +109,6 @@ std::vector<std::string> Policy::allowed_signature_methods() const
       "RSA",
       //"DSA",
       //"IMPLICIT",
-      //"ANONYMOUS" (anon)
       };
    }
 
@@ -222,12 +220,6 @@ size_t Policy::minimum_rsa_bits() const
    return 2048;
    }
 
-size_t Policy::minimum_dsa_group_size() const
-   {
-   // FIPS 186-3
-   return 2048;
-   }
-
 void Policy::check_peer_key_acceptable(const Public_Key& public_key) const
    {
    const std::string algo_name = public_key.algo_name();
@@ -242,10 +234,6 @@ void Policy::check_peer_key_acceptable(const Public_Key& public_key) const
    else if(algo_name == "DH")
       {
       expected_keylength = minimum_dh_group_size();
-      }
-   else if(algo_name == "DSA")
-      {
-      expected_keylength = minimum_dsa_group_size();
       }
    else if(algo_name == "ECDH" || algo_name == "Curve25519")
       {
@@ -439,8 +427,7 @@ class Ciphersuite_Preference_Ordering final
 
 }
 
-std::vector<uint16_t> Policy::ciphersuite_list(Protocol_Version version,
-                                               bool have_srp) const
+std::vector<uint16_t> Policy::ciphersuite_list(Protocol_Version version) const
    {
    const std::vector<std::string> ciphers = allowed_ciphers();
    const std::vector<std::string> macs = allowed_macs();
@@ -461,10 +448,6 @@ std::vector<uint16_t> Policy::ciphersuite_list(Protocol_Version version,
 
       // Is it acceptable to the policy?
       if(!this->acceptable_ciphersuite(suite))
-         continue;
-
-      // Are we doing SRP?
-      if(!have_srp && suite.kex_method() == Kex_Algo::SRP_SHA)
          continue;
 
       if(!value_exists(kex, suite.kex_algo()))

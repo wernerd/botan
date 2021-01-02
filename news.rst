@@ -1,6 +1,211 @@
 Release Notes
 ========================================
 
+Version 3.0.0, Not Yet Released
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Switch the build to C++17 mode; require at least GCC 9, Clang 7 or MSVC 2019.
+  (GH #2455)
+
+* Remove many deprecated headers (GH #2456)
+
+* Many headers which were previously marked as becoming internal in 2.x have
+  now been made internal (GH #2456)
+
+* Remove several deprecated algorithms including CAST-256, MISTY1, Kasumi,
+  DESX, XTEA, PBKDF1, MCEIES, CBC-MAC and Tiger (GH #2434)
+
+* Remove several deprecated features in TLS including DSA ciphersuites (GH #2505),
+  anonymous ciphersuites (GH #2497), SRP ciphersuites (GH #2506),
+  SEED ciphersuites (GH #2509), Camellia CBC ciphersuites (GH #2509),
+  AES-128 OCB ciphersuites (GH #2511), DHE_PSK suites (GH #2512)
+
+* Resolve an issue in the modular square root function which could cause
+  a near-infinite loop if used with a composite modulus of a certain form
+  where finding a quadratic non-residue is hard. (GH #2478 #2476)
+
+* Remove use of ``shared_ptr`` from certificate store API as since
+  2.4.0 ``X509_Certificate`` is internally a ``shared_ptr``. (GH #2484)
+
+* Use smaller tables in the implementations of Camellia, ARIA, SEED, DES,
+  and Whirlpool (GH #2534 #2558)
+
+* Add a BMI2 implementation of 3DES which avoids most cache-based side channels.
+  (GH #2565)
+
+* Convert base64, base58, base32 and hex encoding/decoding to be constant
+  time (GH #2543)
+
+* Use constant-time code instead of table lookups when computing parity bits
+  (GH #2560), choosing ASN.1 string type (GH #2559) and when converting to/from
+  the bcrypt variant of base64 (GH #2561)
+
+* Change how DL exponents are sized; now exponents are slightly larger and
+  are always chosen to be 8-bit aligned. (GH #2545)
+
+* Add new ``X509_DN::DER_encode`` function. (GH #2472)
+
+* Add support for keyed BLAKE2b (GH #2524)
+
+* Optimizations for SHACAL2, especially improving ARMv8 and POWER (GH #2556 #2557)
+
+* Several enums including ``DL_Group::Format``, ``EC_Group_Formatting``,
+  ``CRL_Code``, and ``ASN1_Tag`` are now ``enum class``. (GH #2551 #2552)
+
+* Re-enable support for CLMUL instruction on Visual C++, which was accidentally
+  disabled starting in 2.12.0
+
+* Remove deprecated ``Data_Store`` class (GH #2461)
+
+* Remove deprecated public member variables of ``OID``, ``Attribute``,
+  ``BER_Object``, and ``AlgorithmIdentifier``. (GH #2462)
+
+* Remove support for HP and Pathscale compilers (GH #2455)
+
+* Remove support for Google NaCl (GH #2455)
+
+* Add a flag to enable VSX instructions, resolving a build issue on big-endian PPC64
+  (GH #2516 #2515)
+
+* Add more tests of the Jacobi symbol calculation (#2477)
+
+* Improve DragonflyBSD platform support (GH #2457)
+
+* Move the main CI build to Github Actions (GH #2504 #2503 #2501)
+
+* Correct a linking bug when using `--with-external-libdir`` (GH #2496)
+
+* Further adoption of ``constexpr`` (GH #2490)
+
+* Remove support for MD4 and MD5 from CommonCrypto as support is deprecated
+  there.
+
+* Generate a ``compile_commands.json`` for use with Clang tooling.
+
+Version 2.17.3, 2020-12-21
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Change base64, base58, base32, and hex encoding and decoding opearations
+  to run in constant time (GH #2549)
+
+* Fix a build problem on PPC64 building with Clang (GH #2547)
+
+* Fix an install problem introduced in 2.17.2 affecting MSVC 2015
+
+* Fix use of -L flag in linking when configured using ``--with-external-libdir``
+  (GH #2496)
+
+* Fix a build problem on big-endian PowerPC related to VSX instructions
+  in the AES code. (GH #2515)
+
+Version 2.17.2, 2020-11-13
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Fix an build problem on ppc64 introduced with certain recent
+  versions of GCC or binutils where using the DARN instruction
+  requires using an appropriate -mcpu flag to enable the instruction
+  in the assembler. (GH #2481 2463)
+
+* Resolve an issue in the modular square root algorithm where a loop
+  to find a quadratic non-residue could, for a carefully chosen
+  composite modulus, not terminte in a timely manner. (GH #2482 #2476)
+
+* Fix a regression in MinGW builds introduced in 2.17.1
+
+Version 2.17.1, 2020-11-07
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Fix a build problem that could occur if Python was not in the PATH.
+  This was known to occur on some installations of macOS.
+
+* Re-enable support for the x86 CLMUL instruction on Visual C++, which was
+  accidentally disabled starting in 2.12.0. (GH #2460)
+
+Version 2.17.0, 2020-11-05
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Fix a bug in ECDSA which could occur when the group size and hash length
+  differ. In this case, on occasion the generated signature would not be
+  accepted by other ECDSA implementations. This was particularly likely to
+  affect users of 160-bit or 239-bit curves. (GH #2433 #2415)
+
+* Fix a bug in ECDSA verification when the public key was chosen to be
+  a small multiple of the group generator. In that case, verification
+  would fail even if the signature was actually valid. (GH #2425)
+
+* SIV's functionality of supporting multiple associated data inputs has been
+  generalized onto the AEAD_Mode interface. However at the moment SIV is the
+  only AEAD implemented which supports more than one AD. (GH #2440)
+
+* The contents of ASN.1 headers ``asn1_str.h``, ``asn1_time.h``, ``asn1_oid.h``
+  and ``alg_id.h`` have been moved to ``asn1_obj.h``. The header files remain
+  but simply forward the include to ``asn1_obj.h``. These now-empty header files
+  are deprecated, and will be removed in a future major release. (GH #2441)
+
+* The contents of X.509/PKIX headers ``asn1_attribute.h`` ``asn1_alt_name.h``
+  ``name_constraint.h`` ``x509_dn.h`` ``cert_status.h`` and ``key_constraint.h``
+  have been merged into ``pkix_enums.h`` (for enumerations) and ``pkix_types.h``
+  (for all other definitions). The previous header files remain but simply
+  forward the include to the new header containing the definition. These
+  now-empty header files are deprecated, and will be removed in a future major
+  release. (GH #2441)
+
+* A number of other headers including those related to HOTP/TOTP, XMSS,
+  PKCS11, PSK_DB have also been merged. Any now deprecated/empty headers
+  simply include the new header and issue a deprecation warning.
+  (GH #2443 #2446 #2447 2448 #2449)
+
+* Small optimizations in the non-hardware assisted AES key generation
+  code path (GH #2417 #2418)
+
+* Move the GHASH code to a new module in utils, making it possible
+  to build GMAC support without requiring GCM (GH #2416)
+
+* Add more detection logic for AVX-512 features (GH #2430)
+
+* Avoid std::is_pod which is deprecated in C++20 (GH #2429)
+
+* Fix a bug parsing deeply nested cipher names (GH #2426)
+
+* Add support for ``aarch64_be`` target CPU (GH #2422)
+
+* Fix order of linker flags so they are always applied effectively (GH #2420)
+
+* Prevent requesting DER encoding of signatures when the algorithm
+  did not support it (GH #2419)
+
+Version 2.16.0, 2020-10-06
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Now userspace PRNG objects (such as AutoSeeded_RNG and HMAC_DRBG)
+  use an internal lock, which allows safe concurrent use. This however
+  is purely a precaution in case of accidental sharing of such RNG
+  objects; for performance reasons it is always preferable to use
+  a RNG per thread if a userspace RNG is needed. (GH #2399)
+
+* DL_Group and EC_Group objects now track if they were created from a
+  known trusted group (such as P-256 or an IPsec DH parameter).  If
+  so, then verification tests can be relaxed, as compared to
+  parameters which may have been maliciously constructed in order to
+  pass primality checks. (GH #2409)
+
+* RandomNumberGenerator::add_entropy_T assumed its input was a POD
+  type but did not verify this. (GH #2403)
+
+* Support OCSP responders that live on a non-standard port (GH #2401)
+
+* Add support for Solaris sandbox (GH #2385)
+
+* Support suffixes on release numbers for alpha/beta releases (GH #2404)
+
+* Fix a bug in EAX which allowed requesting a 0 length tag, which had
+  the effect of using a full length tag. Instead omit the length field,
+  or request the full tag length explicitly. (GH #2392 #2390)
+
+* Fix a memory leak in GCM where if passed an unsuitable block cipher
+  (eg not 128 bit) it would throw an exception and leak the cipher
+  object. (GH #2392 #2388)
+
 Version 2.15.0, 2020-07-07
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

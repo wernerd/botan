@@ -5,11 +5,11 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/asn1_oid.h>
+#include <botan/asn1_obj.h>
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
 #include <botan/internal/bit_ops.h>
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 #include <botan/oids.h>
 #include <algorithm>
 #include <sstream>
@@ -86,9 +86,9 @@ OID::OID(const std::string& oid_str)
       m_id = parse_oid_str(oid_str);
 
       if(m_id.size() < 2 || m_id[0] > 2)
-         throw Invalid_OID(oid_str);
+         throw Decoding_Error("Invalid OID " + oid_str);
       if((m_id[0] == 0 || m_id[0] == 1) && m_id[1] > 39)
-         throw Invalid_OID(oid_str);
+         throw Decoding_Error("Invalid OID " + oid_str);
       }
    }
 
@@ -168,7 +168,7 @@ void OID::encode_into(DER_Encoder& der) const
          encoding.push_back(m_id[i] & 0x7F);
          }
       }
-   der.add_object(OBJECT_ID, UNIVERSAL, encoding);
+   der.add_object(ASN1_Tag::OBJECT_ID, ASN1_Tag::UNIVERSAL, encoding);
    }
 
 /*
@@ -177,7 +177,7 @@ void OID::encode_into(DER_Encoder& der) const
 void OID::decode_from(BER_Decoder& decoder)
    {
    BER_Object obj = decoder.get_next_object();
-   if(obj.tagging() != OBJECT_ID)
+   if(obj.tagging() != ASN1_Tag::OBJECT_ID)
       throw BER_Bad_Tag("Error decoding OID, unknown tag", obj.tagging());
 
    const size_t length = obj.length();

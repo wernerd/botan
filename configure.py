@@ -90,6 +90,13 @@ class Version(object):
         if not Version.data:
             root_dir = os.path.dirname(os.path.realpath(__file__))
             Version.data = parse_version_file(os.path.join(root_dir, 'src/build-data/version.txt'))
+
+            suffix = Version.data["release_suffix"]
+            if suffix != "":
+                suffix_re = re.compile('-(alpha|beta|rc)[0-9]+')
+
+                if not suffix_re.match(suffix):
+                    raise Exception("Unexpected version suffix '%s'" % (suffix))
         return Version.data
 
     @staticmethod
@@ -103,6 +110,10 @@ class Version(object):
     @staticmethod
     def patch():
         return Version.get_data()["release_patch"]
+
+    @staticmethod
+    def suffix():
+        return Version.get_data()["release_suffix"]
 
     @staticmethod
     def packed():
@@ -123,7 +134,7 @@ class Version(object):
 
     @staticmethod
     def as_string():
-        return '%d.%d.%d' % (Version.major(), Version.minor(), Version.patch())
+        return '%d.%d.%d%s' % (Version.major(), Version.minor(), Version.patch(), Version.suffix())
 
     @staticmethod
     def vc_rev():
@@ -330,6 +341,9 @@ def process_command_line(args): # pylint: disable=too-many-locals,too-many-state
 
     target_group.add_option('--msvc-runtime', metavar='RT', default=None,
                             help='specify MSVC runtime (MT, MD, MTd, MDd)')
+
+    target_group.add_option('--compiler-cache',
+                            help='specify a compiler cache to use')
 
     target_group.add_option('--with-endian', metavar='ORDER', default=None,
                             help='override byte order guess')
@@ -826,10 +840,10 @@ class ModuleInfo(InfoObject):
 
         self.source = all_source_files
 
-        # If not entry for the headers, all are assumed public
+        # If not entry for the headers, all are assumed internal
         if lex.header_internal == [] and lex.header_public == []:
-            self.header_public = list(all_header_files)
-            self.header_internal = []
+            self.header_public = []
+            self.header_internal = list(all_header_files)
         else:
             self.header_public = lex.header_public
             self.header_internal = lex.header_internal
@@ -886,7 +900,14 @@ class ModuleInfo(InfoObject):
             if not re.match('^[0-9A-Za-z_]{3,30}$', key):
                 raise InternalError('Module defines key has invalid format: "%s"' % key)
             if not re.match('^20[0-9]{6}$', value):
-                raise InternalError('Module defines value has invalid format: "%s"' % value)
+                raise InternalError('Module defines value has invalid format: "%s" (should be YYYYMMDD)' % value)
+
+            year = int(value[0:4])
+            month = int(value[4:6])
+            day = int(value[6:])
+
+            if year < 2013 or month == 0 or month > 12 or day == 0 or day > 31:
+                raise InternalError('Module defines value has invalid format: "%s" (should be YYYYMMDD)' % value)
 
     def cross_check(self, arch_info, cc_info, all_os_features, all_isa_extn):
 
@@ -948,7 +969,7 @@ class ModuleInfo(InfoObject):
 
     def compatible_cpu(self, archinfo, options):
         arch_name = archinfo.basename
-        cpu_name = options.cpu
+        cpu_name = options.arch
 
         if self.endian != 'any':
             if self.endian != options.with_endian:
@@ -1309,7 +1330,7 @@ class CompilerInfo(InfoObject): # pylint: disable=too-many-instance-attributes
                     yield all_except
 
             yield options.os
-            yield options.cpu
+            yield options.arch
 
         abi_link = set()
         for what in mach_abi_groups():
@@ -1954,6 +1975,8 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
 
     def all_targets(options):
         yield 'libs'
+        if options.with_documentation:
+            yield 'docs'
         if 'cli' in options.build_targets:
             yield 'cli'
         if 'tests' in options.build_targets:
@@ -1962,8 +1985,6 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
             yield 'fuzzers'
         if 'bogo_shim' in options.build_targets:
             yield 'bogo_shim'
-        if options.with_documentation:
-            yield 'docs'
 
     def install_targets(options):
         yield 'libs'
@@ -1977,10 +1998,27 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
             return p
         return os.path.join(options.prefix or osinfo.install_root, p)
 
+    def choose_python_exe():
+        exe = sys.executable
+
+        if options.os == 'mingw':  # mingw doesn't handle the backslashes in the absolute path well
+            return exe.replace('\\', '/')
+
+        return exe
+
+    def choose_cxx_exe():
+        cxx = options.compiler_binary or cc.binary_name
+
+        if options.compiler_cache is None:
+            return cxx
+        else:
+            return '%s %s' % (options.compiler_cache, cxx)
+
     variables = {
         'version_major':  Version.major(),
         'version_minor':  Version.minor(),
         'version_patch':  Version.patch(),
+        'version_suffix': Version.suffix(),
         'version_vc_rev': 'unknown' if options.no_store_vc_rev else Version.vc_rev(),
         'abi_rev':        Version.so_rev(),
 
@@ -1995,6 +2033,12 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
 
         'all_targets': ' '.join(all_targets(options)),
         'install_targets': ' '.join(install_targets(options)),
+
+        'public_headers': sorted([os.path.basename(h) for h in build_paths.public_headers]),
+        'internal_headers': sorted([os.path.basename(h) for h in build_paths.internal_headers]),
+        'external_headers':  sorted([os.path.basename(h) for h in build_paths.external_headers]),
+
+        'abs_root_dir': os.path.dirname(os.path.realpath(__file__)),
 
         'base_dir': source_paths.base_dir,
         'src_dir': source_paths.src_dir,
@@ -2064,6 +2108,7 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
 
         'os': options.os,
         'arch': options.arch,
+        'compiler': options.compiler,
         'cpu_family': arch.family,
         'endian': options.with_endian,
         'cpu_is_64bit': arch.wordsize == 64,
@@ -2074,11 +2119,11 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
 
         'mp_bits': choose_mp_bits(),
 
-        'python_exe': os.path.basename(sys.executable),
+        'python_exe': choose_python_exe(),
         'python_version': options.python_version,
         'install_python_module': not options.no_install_python_module,
 
-        'cxx': (options.compiler_binary or cc.binary_name),
+        'cxx': choose_cxx_exe(),
         'cxx_abi_flags': cc.mach_abi_link_flags(options),
         'linker': cc.linker_name or '$(CXX)',
         'make_supports_phony': osinfo.basename != 'windows',
@@ -2106,9 +2151,9 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
 
         'visibility_attribute': cc.gen_visibility_attribute(options),
 
-        'lib_link_cmd': cc.so_link_command_for(osinfo.basename, options) + ' ' + external_link_cmd(),
-        'exe_link_cmd': cc.binary_link_command_for(osinfo.basename, options) + ' ' + external_link_cmd(),
-        'post_link_cmd': '',
+        'lib_link_cmd': cc.so_link_command_for(osinfo.basename, options),
+        'exe_link_cmd': cc.binary_link_command_for(osinfo.basename, options),
+        'external_link_cmd': external_link_cmd(),
 
         'ar_command': ar_command(),
         'ar_options': options.ar_options or cc.ar_options or osinfo.ar_options,
@@ -2147,8 +2192,13 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
         'test_mode': options.test_mode,
         'optimize_for_size': options.optimize_for_size,
 
-        'mod_list': sorted([m.basename for m in modules])
+        'mod_list': sorted([m.basename for m in modules]),
     }
+
+    variables['installed_include_dir'] = os.path.join(
+        variables['prefix'],
+        variables['includedir'],
+        'botan-%d' % (Version.major()), 'botan')
 
     if cc.basename == 'msvc' and variables['cxx_abi_flags'] != '':
         # MSVC linker doesn't support/need the ABI options,
@@ -3211,17 +3261,17 @@ def do_io_for_build(cc, arch, osinfo, using_mods, build_paths, source_paths, tem
     with open(os.path.join(build_paths.build_dir, 'build_config.json'), 'w') as f:
         json.dump(template_vars, f, sort_keys=True, indent=2)
 
+    if options.compiler == 'clang':
+        write_template(in_build_dir('compile_commands.json'), in_build_data('compile_commands.json.in'))
+
     if options.with_cmake:
         logging.warning("CMake build is only for development: use make for production builds")
-        cmake_template = os.path.join(source_paths.build_data_dir, 'cmake.in')
-        write_template('CMakeLists.txt', cmake_template)
+        write_template('CMakeLists.txt', in_build_data('cmake.in'))
     elif options.with_bakefile:
         logging.warning("Bakefile build is only for development: use make for production builds")
-        bakefile_template = os.path.join(source_paths.build_data_dir, 'bakefile.in')
-        write_template('botan.bkl', bakefile_template)
+        write_template('botan.bkl', in_build_data('bakefile.in'))
     else:
-        makefile_template = os.path.join(source_paths.build_data_dir, 'makefile.in')
-        write_template(template_vars['makefile_path'], makefile_template)
+        write_template(template_vars['makefile_path'], in_build_data('makefile.in'))
 
     if options.with_rst2man:
         rst2man_file = os.path.join(build_paths.build_dir, 'botan.rst')

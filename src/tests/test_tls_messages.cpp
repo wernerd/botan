@@ -14,7 +14,7 @@
    #include <botan/tls_handshake_msg.h>
    #include <botan/tls_messages.h>
    #include <botan/tls_alert.h>
-   #include <botan/loadstor.h>
+   #include <botan/internal/loadstor.h>
 #endif
 
 namespace Botan_Tests {
@@ -225,7 +225,7 @@ class TLS_Message_Parsing_Test final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_messages", TLS_Message_Parsing_Test);
+BOTAN_REGISTER_TEST("tls", "tls_messages", TLS_Message_Parsing_Test);
 
 #endif
 

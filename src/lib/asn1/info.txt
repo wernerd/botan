@@ -1,7 +1,15 @@
 <defines>
-ASN1 -> 20171109
+ASN1 -> 20201106
 </defines>
 
 <requires>
 bigint
 </requires>
+
+<header:public>
+asn1_print.h
+asn1_obj.h
+der_enc.h
+oids.h
+ber_dec.h
+</header:public>

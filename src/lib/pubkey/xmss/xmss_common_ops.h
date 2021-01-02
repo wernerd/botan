@@ -11,12 +11,11 @@
 #include <vector>
 #include <botan/secmem.h>
 #include <botan/xmss_parameters.h>
-#include <botan/xmss_address.h>
-#include <botan/xmss_hash.h>
-
-BOTAN_FUTURE_INTERNAL_HEADER(xmss_common_ops.h)
+#include <botan/internal/xmss_address.h>
 
 namespace Botan {
+
+class XMSS_Hash;
 
 typedef std::vector<secure_vector<uint8_t>> wots_keysig_t;
 
@@ -42,6 +41,7 @@ class XMSS_Common_Ops
         * @param[in] seed The seed for G.
         * @param[in] hash Instance of XMSS_Hash, that may only by the thead
         *            executing generate_public_key.
+        * @param[in] params
         **/
       static void randomize_tree_hash(
          secure_vector<uint8_t>& result,
@@ -67,6 +67,7 @@ class XMSS_Common_Ops
        * @param[in] seed The seed generated during the public key generation.
        * @param[in] hash Instance of XMSS_Hash, that may only be used by the
        *            thead executing create_l_tree.
+       * @param[in] params
       **/
       static void create_l_tree(secure_vector<uint8_t>& result,
                                 wots_keysig_t pk,

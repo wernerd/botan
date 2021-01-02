@@ -5,7 +5,7 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/crl_ent.h>
+#include <botan/x509_crl.h>
 #include <botan/x509cert.h>
 #include <botan/x509_ext.h>
 #include <botan/der_enc.h>
@@ -18,7 +18,7 @@ struct CRL_Entry_Data
    {
    std::vector<uint8_t> m_serial;
    X509_Time m_time;
-   CRL_Code m_reason = UNSPECIFIED;
+   CRL_Code m_reason = CRL_Code::UNSPECIFIED;
    Extensions m_extensions;
    };
 
@@ -32,7 +32,7 @@ CRL_Entry::CRL_Entry(const X509_Certificate& cert, CRL_Code why)
    m_data->m_time = X509_Time(std::chrono::system_clock::now());
    m_data->m_reason = why;
 
-   if(why != UNSPECIFIED)
+   if(why != CRL_Code::UNSPECIFIED)
       {
       m_data->m_extensions.add(new Cert_Extension::CRL_ReasonCode(why));
       }
@@ -65,10 +65,10 @@ bool operator!=(const CRL_Entry& a1, const CRL_Entry& a2)
 */
 void CRL_Entry::encode_into(DER_Encoder& der) const
    {
-   der.start_cons(SEQUENCE)
+   der.start_sequence()
       .encode(BigInt::decode(serial_number()))
       .encode(expire_time())
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .encode(extensions())
       .end_cons()
    .end_cons();
@@ -83,7 +83,7 @@ void CRL_Entry::decode_from(BER_Decoder& source)
 
    std::unique_ptr<CRL_Entry_Data> data(new CRL_Entry_Data);
 
-   BER_Decoder entry = source.start_cons(SEQUENCE);
+   BER_Decoder entry = source.start_sequence();
 
    entry.decode(serial_number_bn).decode(data->m_time);
    data->m_serial = BigInt::encode(serial_number_bn);
@@ -97,7 +97,7 @@ void CRL_Entry::decode_from(BER_Decoder& source)
          }
       else
          {
-         data->m_reason = UNSPECIFIED;
+         data->m_reason = CRL_Code::UNSPECIFIED;
          }
       }
 

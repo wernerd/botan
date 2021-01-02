@@ -117,19 +117,12 @@ Key_Not_Set::Key_Not_Set(const std::string& algo) :
    Invalid_State("Key not set in " + algo)
    {}
 
-Policy_Violation::Policy_Violation(const std::string& err) :
-   Invalid_State("Policy violation: " + err) {}
-
 PRNG_Unseeded::PRNG_Unseeded(const std::string& algo) :
    Invalid_State("PRNG not seeded: " + algo)
    {}
 
 Algorithm_Not_Found::Algorithm_Not_Found(const std::string& name) :
    Lookup_Error("Could not find any algorithm named \"" + name + "\"")
-   {}
-
-No_Provider_Found::No_Provider_Found(const std::string& name) :
-   Exception("Could not find any provider for algorithm named \"" + name + "\"")
    {}
 
 Provider_Not_Found::Provider_Not_Found(const std::string& algo, const std::string& provider) :
@@ -141,26 +134,22 @@ Invalid_Algorithm_Name::Invalid_Algorithm_Name(const std::string& name):
    {}
 
 Encoding_Error::Encoding_Error(const std::string& name) :
-   Invalid_Argument("Encoding error: " + name)
+   Exception("Encoding error: " + name)
    {}
 
 Decoding_Error::Decoding_Error(const std::string& name) :
-   Invalid_Argument(name)
+   Exception(name)
    {}
 
 Decoding_Error::Decoding_Error(const std::string& msg, const std::exception& e) :
-   Invalid_Argument(msg, e)
+   Exception(msg, e)
    {}
 
 Decoding_Error::Decoding_Error(const std::string& name, const char* exception_message) :
-   Invalid_Argument(name + " failed with exception " + exception_message) {}
+   Exception(name + " failed with exception " + exception_message) {}
 
 Invalid_Authentication_Tag::Invalid_Authentication_Tag(const std::string& msg) :
    Exception("Invalid authentication tag: " + msg)
-   {}
-
-Invalid_OID::Invalid_OID(const std::string& oid) :
-   Decoding_Error("Invalid ASN.1 OID: " + oid)
    {}
 
 Stream_IO_Error::Stream_IO_Error(const std::string& err) :
@@ -170,10 +159,6 @@ Stream_IO_Error::Stream_IO_Error(const std::string& err) :
 System_Error::System_Error(const std::string& msg, int err_code) :
    Exception(msg + " error code " + std::to_string(err_code)),
    m_error_code(err_code)
-   {}
-
-Self_Test_Failure::Self_Test_Failure(const std::string& err) :
-   Internal_Error("Self test failed: " + err)
    {}
 
 Not_Implemented::Not_Implemented(const std::string& err) :

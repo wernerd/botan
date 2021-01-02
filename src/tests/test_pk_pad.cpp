@@ -7,11 +7,11 @@
 #include "tests.h"
 
 #if defined(BOTAN_HAS_PK_PADDING)
-   #include <botan/emsa.h>
+   #include <botan/internal/emsa.h>
 #endif
 
 #if defined(BOTAN_HAS_EME_PKCS1)
-   #include <botan/eme_pkcs.h>
+   #include <botan/internal/eme_pkcs.h>
 #endif
 
 namespace Botan_Tests {
@@ -70,7 +70,7 @@ class EME_PKCS1v15_Decoding_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("eme_pkcs1v15", EME_PKCS1v15_Decoding_Tests);
+BOTAN_REGISTER_TEST("pubkey", "eme_pkcs1v15", EME_PKCS1v15_Decoding_Tests);
 
 class EMSA_unit_tests final : public Test
    {
@@ -178,7 +178,7 @@ class EMSA_unit_tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pk_pad_emsa_unit", EMSA_unit_tests);
+BOTAN_REGISTER_TEST("pubkey", "pk_pad_emsa_unit", EMSA_unit_tests);
 
 #endif
 

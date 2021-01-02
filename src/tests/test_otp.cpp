@@ -7,21 +7,15 @@
 
 #include "tests.h"
 
-#if defined(BOTAN_HAS_HOTP)
-   #include <botan/parsing.h>
-   #include <botan/hotp.h>
-   #include <botan/hash.h>
-#endif
-
-#if defined(BOTAN_HAS_TOTP)
-   #include <botan/totp.h>
-   #include <botan/calendar.h>
+#if defined(BOTAN_HAS_HOTP) && defined(BOTAN_HAS_TOTP)
+   #include <botan/otp.h>
+   #include <botan/internal/calendar.h>
    #include <botan/hash.h>
 #endif
 
 namespace Botan_Tests {
 
-#if defined(BOTAN_HAS_HOTP)
+#if defined(BOTAN_HAS_HOTP) && defined(BOTAN_HAS_TOTP)
 
 class HOTP_KAT_Tests final : public Text_Based_Test
    {
@@ -72,11 +66,7 @@ class HOTP_KAT_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("otp_hotp", HOTP_KAT_Tests);
-
-#endif
-
-#if defined(BOTAN_HAS_TOTP)
+BOTAN_REGISTER_TEST("otp", "otp_hotp", HOTP_KAT_Tests);
 
 class TOTP_KAT_Tests final : public Text_Based_Test
    {
@@ -125,17 +115,18 @@ class TOTP_KAT_Tests final : public Text_Based_Test
             throw Test_Error("Invalid TOTP timestamp string " + time_str);
          // YYYY-MM-DDTHH:MM:SS
          // 0123456789012345678
-         const uint32_t year = Botan::to_u32bit(time_str.substr(0, 4));
-         const uint32_t month = Botan::to_u32bit(time_str.substr(5, 2));
-         const uint32_t day = Botan::to_u32bit(time_str.substr(8, 2));
-         const uint32_t hour = Botan::to_u32bit(time_str.substr(11, 2));
-         const uint32_t minute = Botan::to_u32bit(time_str.substr(14, 2));
-         const uint32_t second = Botan::to_u32bit(time_str.substr(17, 2));
+         const uint32_t year = static_cast<uint32_t>(std::stoi(time_str.substr(0, 4)));
+         const uint32_t month = static_cast<uint32_t>(std::stoi(time_str.substr(5, 2)));
+         const uint32_t day = static_cast<uint32_t>(std::stoi(time_str.substr(8, 2)));
+         const uint32_t hour = static_cast<uint32_t>(std::stoi(time_str.substr(11, 2)));
+         const uint32_t minute = static_cast<uint32_t>(std::stoi(time_str.substr(14, 2)));
+         const uint32_t second = static_cast<uint32_t>(std::stoi(time_str.substr(17, 2)));
          return Botan::calendar_point(year, month, day, hour, minute, second).to_std_timepoint();
          }
    };
 
-BOTAN_REGISTER_TEST("otp_totp", TOTP_KAT_Tests);
+BOTAN_REGISTER_TEST("otp", "otp_totp", TOTP_KAT_Tests);
+
 #endif
 
 }

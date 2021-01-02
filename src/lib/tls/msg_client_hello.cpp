@@ -89,7 +89,7 @@ Client_Hello::Client_Hello(Handshake_IO& io,
                            const std::vector<std::string>& next_protocols) :
    m_version(client_settings.protocol_version()),
    m_random(make_hello_random(rng, policy)),
-   m_suites(policy.ciphersuite_list(m_version, !client_settings.srp_identifier().empty())),
+   m_suites(policy.ciphersuite_list(m_version)),
    m_comp_methods(1)
    {
    if(!policy.acceptable_protocol_version(m_version))
@@ -120,19 +120,10 @@ Client_Hello::Client_Hello(Handshake_IO& io,
       m_extensions.add(new Application_Layer_Protocol_Notification(next_protocols));
 
    if(m_version.supports_negotiable_signature_algorithms())
-      m_extensions.add(new Signature_Algorithms(policy.allowed_signature_schemes()));
+      m_extensions.add(new Signature_Algorithms(policy.acceptable_signature_schemes()));
 
    if(m_version.is_datagram_protocol())
       m_extensions.add(new SRTP_Protection_Profiles(policy.srtp_profiles()));
-
-#if defined(BOTAN_HAS_SRP6)
-   m_extensions.add(new SRP_Identifier(client_settings.srp_identifier()));
-#else
-   if(!client_settings.srp_identifier().empty())
-      {
-      throw Invalid_State("Attempting to initiate SRP session but TLS-SRP support disabled");
-      }
-#endif
 
    std::unique_ptr<Supported_Groups> supported_groups(new Supported_Groups(policy.key_exchange_groups()));
 
@@ -165,7 +156,7 @@ Client_Hello::Client_Hello(Handshake_IO& io,
    m_version(session.version()),
    m_session_id(session.session_id()),
    m_random(make_hello_random(rng, policy)),
-   m_suites(policy.ciphersuite_list(m_version, (session.srp_identifier() != ""))),
+   m_suites(policy.ciphersuite_list(m_version)),
    m_comp_methods(1)
    {
    if(!policy.acceptable_protocol_version(m_version))
@@ -201,17 +192,8 @@ Client_Hello::Client_Hello(Handshake_IO& io,
    if(session.supports_encrypt_then_mac())
       m_extensions.add(new Encrypt_then_MAC);
 
-#if defined(BOTAN_HAS_SRP6)
-   m_extensions.add(new SRP_Identifier(session.srp_identifier()));
-#else
-   if(!session.srp_identifier().empty())
-      {
-      throw Invalid_State("Attempting to resume SRP session but TLS-SRP support disabled");
-      }
-#endif
-
    if(m_version.supports_negotiable_signature_algorithms())
-      m_extensions.add(new Signature_Algorithms(policy.allowed_signature_schemes()));
+      m_extensions.add(new Signature_Algorithms(policy.acceptable_signature_schemes()));
 
    if(reneg_info.empty() && !next_protocols.empty())
       m_extensions.add(new Application_Layer_Protocol_Notification(next_protocols));
@@ -379,15 +361,6 @@ std::string Client_Hello::sni_hostname() const
       return sni->host_name();
    return "";
    }
-
-#if defined(BOTAN_HAS_SRP6)
-std::string Client_Hello::srp_identifier() const
-   {
-   if(SRP_Identifier* srp = m_extensions.get<SRP_Identifier>())
-      return srp->identifier();
-   return "";
-   }
-#endif
 
 bool Client_Hello::secure_renegotiation() const
    {

@@ -9,9 +9,7 @@
 #if defined(BOTAN_HAS_ASN1)
    #include <botan/der_enc.h>
    #include <botan/ber_dec.h>
-   #include <botan/asn1_str.h>
    #include <botan/asn1_print.h>
-   #include <botan/asn1_time.h>
 #endif
 
 namespace Botan_Tests {
@@ -289,7 +287,7 @@ class ASN1_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("asn1", ASN1_Tests);
+BOTAN_REGISTER_TEST("asn1", "asn1", ASN1_Tests);
 
 class ASN1_Time_Parsing_Tests final : public Text_Based_Test
    {
@@ -312,7 +310,7 @@ class ASN1_Time_Parsing_Tests final : public Text_Based_Test
             }
 
          const Botan::ASN1_Tag tag =
-            (tag_str == "UTC" || tag_str == "UTC.invalid") ? Botan::UTC_TIME : Botan::GENERALIZED_TIME;
+            (tag_str == "UTC" || tag_str == "UTC.invalid") ? Botan::ASN1_Tag::UTC_TIME : Botan::ASN1_Tag::GENERALIZED_TIME;
 
          const bool valid = tag_str.find(".invalid") == std::string::npos;
 
@@ -332,7 +330,7 @@ class ASN1_Time_Parsing_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("asn1_time", ASN1_Time_Parsing_Tests);
+BOTAN_REGISTER_TEST("asn1", "asn1_time", ASN1_Time_Parsing_Tests);
 
 class ASN1_Printer_Tests final : public Test
    {
@@ -358,7 +356,7 @@ class ASN1_Printer_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("asn1_printer", ASN1_Printer_Tests);
+BOTAN_REGISTER_TEST("asn1", "asn1_printer", ASN1_Printer_Tests);
 
 #endif
 

@@ -9,7 +9,7 @@
 #ifndef BOTAN_P11_RSA_H_
 #define BOTAN_P11_RSA_H_
 
-#include <botan/p11_session.h>
+#include <botan/p11_types.h>
 #include <botan/p11_object.h>
 #include <botan/pk_keys.h>
 #include <botan/bigint.h>
@@ -199,6 +199,8 @@ class BOTAN_PUBLIC_API(2,0) PKCS11_RSA_PrivateKey final :
       RSA_PrivateKey export_key() const;
 
       secure_vector<uint8_t> private_key_bits() const override;
+
+      std::unique_ptr<Public_Key> public_key() const override;
 
       std::unique_ptr<PK_Ops::Decryption>
          create_decryption_op(RandomNumberGenerator& rng,

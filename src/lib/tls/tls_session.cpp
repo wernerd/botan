@@ -6,10 +6,10 @@
 */
 
 #include <botan/tls_session.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
-#include <botan/asn1_str.h>
+#include <botan/asn1_obj.h>
 #include <botan/pem.h>
 #include <botan/aead.h>
 #include <botan/mac.h>
@@ -29,7 +29,6 @@ Session::Session(const std::vector<uint8_t>& session_identifier,
                  const std::vector<X509_Certificate>& certs,
                  const std::vector<uint8_t>& ticket,
                  const Server_Information& server_info,
-                 const std::string& srp_identifier,
                  uint16_t srtp_profile) :
    m_start_time(std::chrono::system_clock::now()),
    m_identifier(session_identifier),
@@ -42,8 +41,7 @@ Session::Session(const std::vector<uint8_t>& session_identifier,
    m_extended_master_secret(extended_master_secret),
    m_encrypt_then_mac(encrypt_then_mac),
    m_peer_certs(certs),
-   m_server_info(server_info),
-   m_srp_identifier(srp_identifier)
+   m_server_info(server_info)
    {
    }
 
@@ -73,22 +71,22 @@ Session::Session(const uint8_t ber[], size_t ber_len)
    size_t compression_method = 0;
 
    BER_Decoder(ber, ber_len)
-      .start_cons(SEQUENCE)
+      .start_sequence()
         .decode_and_check(static_cast<size_t>(TLS_SESSION_PARAM_STRUCT_VERSION),
                           "Unknown version in serialized TLS session")
         .decode_integer_type(start_time)
         .decode_integer_type(major_version)
         .decode_integer_type(minor_version)
-        .decode(m_identifier, OCTET_STRING)
-        .decode(m_session_ticket, OCTET_STRING)
+        .decode(m_identifier, ASN1_Tag::OCTET_STRING)
+        .decode(m_session_ticket, ASN1_Tag::OCTET_STRING)
         .decode_integer_type(m_ciphersuite)
         .decode_integer_type(compression_method)
         .decode_integer_type(side_code)
         .decode_integer_type(fragment_size)
         .decode(m_extended_master_secret)
         .decode(m_encrypt_then_mac)
-        .decode(m_master_secret, OCTET_STRING)
-        .decode(peer_cert_bits, OCTET_STRING)
+        .decode(m_master_secret, ASN1_Tag::OCTET_STRING)
+        .decode(peer_cert_bits, ASN1_Tag::OCTET_STRING)
         .decode(server_hostname)
         .decode(server_service)
         .decode(server_port)
@@ -124,8 +122,6 @@ Session::Session(const uint8_t ber[], size_t ber_len)
                                       server_service.value(),
                                       static_cast<uint16_t>(server_port));
 
-   m_srp_identifier = srp_identifier_str.value();
-
    if(!peer_cert_bits.empty())
       {
       DataSource_Memory certs(peer_cert_bits.data(), peer_cert_bits.size());
@@ -142,25 +138,25 @@ secure_vector<uint8_t> Session::DER_encode() const
       peer_cert_bits += m_peer_certs[i].BER_encode();
 
    return DER_Encoder()
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .encode(static_cast<size_t>(TLS_SESSION_PARAM_STRUCT_VERSION))
          .encode(static_cast<size_t>(std::chrono::system_clock::to_time_t(m_start_time)))
          .encode(static_cast<size_t>(m_version.major_version()))
          .encode(static_cast<size_t>(m_version.minor_version()))
-         .encode(m_identifier, OCTET_STRING)
-         .encode(m_session_ticket, OCTET_STRING)
+         .encode(m_identifier, ASN1_Tag::OCTET_STRING)
+         .encode(m_session_ticket, ASN1_Tag::OCTET_STRING)
          .encode(static_cast<size_t>(m_ciphersuite))
          .encode(static_cast<size_t>(/*old compression method*/0))
          .encode(static_cast<size_t>(m_connection_side))
          .encode(static_cast<size_t>(/*old fragment size*/0))
          .encode(m_extended_master_secret)
          .encode(m_encrypt_then_mac)
-         .encode(m_master_secret, OCTET_STRING)
-         .encode(peer_cert_bits, OCTET_STRING)
-         .encode(ASN1_String(m_server_info.hostname(), UTF8_STRING))
-         .encode(ASN1_String(m_server_info.service(), UTF8_STRING))
+         .encode(m_master_secret, ASN1_Tag::OCTET_STRING)
+         .encode(peer_cert_bits, ASN1_Tag::OCTET_STRING)
+         .encode(ASN1_String(m_server_info.hostname(), ASN1_Tag::UTF8_STRING))
+         .encode(ASN1_String(m_server_info.service(), ASN1_Tag::UTF8_STRING))
          .encode(static_cast<size_t>(m_server_info.port()))
-         .encode(ASN1_String(m_srp_identifier, UTF8_STRING))
+         .encode(ASN1_String("", ASN1_Tag::UTF8_STRING)) // old srp identifier
          .encode(static_cast<size_t>(m_srtp_profile))
       .end_cons()
    .get_contents();

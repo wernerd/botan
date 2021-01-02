@@ -12,8 +12,6 @@
 #include <botan/aead.h>
 #include <botan/stream_cipher.h>
 
-BOTAN_FUTURE_INTERNAL_HEADER(siv.h)
-
 namespace Botan {
 
 class BlockCipher;
@@ -22,7 +20,7 @@ class MessageAuthenticationCode;
 /**
 * Base class for SIV encryption and decryption (@see RFC 5297)
 */
-class BOTAN_PUBLIC_API(2,0) SIV_Mode : public AEAD_Mode
+class BOTAN_TEST_API SIV_Mode : public AEAD_Mode
    {
    public:
       size_t process(uint8_t buf[], size_t size) override;
@@ -33,7 +31,9 @@ class BOTAN_PUBLIC_API(2,0) SIV_Mode : public AEAD_Mode
       * @param ad associated data
       * @param ad_len length of associated data in bytes
       */
-      void set_associated_data_n(size_t n, const uint8_t ad[], size_t ad_len);
+      void set_associated_data_n(size_t n, const uint8_t ad[], size_t ad_len) override;
+
+      size_t maximum_associated_data_inputs() const override;
 
       void set_associated_data(const uint8_t ad[], size_t ad_len) override
          {
@@ -84,7 +84,7 @@ class BOTAN_PUBLIC_API(2,0) SIV_Mode : public AEAD_Mode
 /**
 * SIV Encryption
 */
-class BOTAN_PUBLIC_API(2,0) SIV_Encryption final : public SIV_Mode
+class BOTAN_TEST_API SIV_Encryption final : public SIV_Mode
    {
    public:
       /**
@@ -103,7 +103,7 @@ class BOTAN_PUBLIC_API(2,0) SIV_Encryption final : public SIV_Mode
 /**
 * SIV Decryption
 */
-class BOTAN_PUBLIC_API(2,0) SIV_Decryption final : public SIV_Mode
+class BOTAN_TEST_API SIV_Decryption final : public SIV_Mode
    {
    public:
       /**

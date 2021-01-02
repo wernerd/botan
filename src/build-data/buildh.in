@@ -2,7 +2,9 @@
 #define BOTAN_BUILD_CONFIG_H_
 
 /*
-* This file was automatically generated running
+* Build configuration for Botan %{version}
+*
+* Automatically generated from
 * '%{command_line}'
 *
 * Target
@@ -15,6 +17,11 @@
 #define BOTAN_VERSION_MINOR %{version_minor}
 #define BOTAN_VERSION_PATCH %{version_patch}
 #define BOTAN_VERSION_DATESTAMP %{version_datestamp}
+
+%{if version_suffix}
+#define BOTAN_VERSION_SUFFIX %{version_suffix}
+#define BOTAN_VERSION_SUFFIX_STR "%{version_suffix}"
+%{endif}
 
 #define BOTAN_VERSION_RELEASE_TYPE "%{release_type}"
 
@@ -110,16 +117,6 @@
 /*
 * Things you can edit (but probably shouldn't)
 */
-
-#if !defined(BOTAN_DEPRECATED_PUBLIC_MEMBER_VARIABLES)
-
-  #if defined(BOTAN_NO_DEPRECATED)
-     #define BOTAN_DEPRECATED_PUBLIC_MEMBER_VARIABLES private
-  #else
-     #define BOTAN_DEPRECATED_PUBLIC_MEMBER_VARIABLES public
-  #endif
-
-#endif
 
 /* How much to allocate for a buffer of no particular size */
 #define BOTAN_DEFAULT_BUFFER_SIZE 1024

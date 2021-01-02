@@ -5,8 +5,8 @@
 */
 
 #include <botan/aead.h>
-#include <botan/scan_name.h>
-#include <botan/parsing.h>
+#include <botan/internal/scan_name.h>
+#include <botan/internal/parsing.h>
 #include <sstream>
 
 #if defined(BOTAN_HAS_BLOCK_CIPHER)
@@ -14,30 +14,38 @@
 #endif
 
 #if defined(BOTAN_HAS_AEAD_CCM)
-  #include <botan/ccm.h>
+  #include <botan/internal/ccm.h>
 #endif
 
 #if defined(BOTAN_HAS_AEAD_CHACHA20_POLY1305)
-  #include <botan/chacha20poly1305.h>
+  #include <botan/internal/chacha20poly1305.h>
 #endif
 
 #if defined(BOTAN_HAS_AEAD_EAX)
-  #include <botan/eax.h>
+  #include <botan/internal/eax.h>
 #endif
 
 #if defined(BOTAN_HAS_AEAD_GCM)
-  #include <botan/gcm.h>
+  #include <botan/internal/gcm.h>
 #endif
 
 #if defined(BOTAN_HAS_AEAD_OCB)
-  #include <botan/ocb.h>
+  #include <botan/internal/ocb.h>
 #endif
 
 #if defined(BOTAN_HAS_AEAD_SIV)
-  #include <botan/siv.h>
+  #include <botan/internal/siv.h>
 #endif
 
 namespace Botan {
+
+void AEAD_Mode::set_associated_data_n(size_t i, const uint8_t ad[], size_t ad_len)
+   {
+   if(i == 0)
+      this->set_associated_data(ad, ad_len);
+   else
+      throw Invalid_Argument("AEAD '" + name() + "' does not support multiple associated data");
+   }
 
 std::unique_ptr<AEAD_Mode> AEAD_Mode::create_or_throw(const std::string& algo,
                                                       Cipher_Dir dir,
@@ -162,7 +170,5 @@ std::unique_ptr<AEAD_Mode> AEAD_Mode::create(const std::string& algo,
 
    return std::unique_ptr<AEAD_Mode>();
    }
-
-
 
 }

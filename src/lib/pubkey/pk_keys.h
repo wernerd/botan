@@ -1,6 +1,6 @@
 /*
 * PK Key Types
-* (C) 1999-2007 Jack Lloyd
+* (C) 1999-2007,2018 Jack Lloyd
 *
 * Botan is released under the Simplified BSD License (see license.txt)
 */
@@ -9,8 +9,7 @@
 #define BOTAN_PK_KEYS_H_
 
 #include <botan/secmem.h>
-#include <botan/asn1_oid.h>
-#include <botan/alg_id.h>
+#include <botan/asn1_obj.h>
 #include <botan/pk_ops_fwd.h>
 #include <string>
 
@@ -29,7 +28,7 @@ enum Signature_Format { IEEE_1363, DER_SEQUENCE };
 class BOTAN_PUBLIC_API(2,0) Public_Key
    {
    public:
-      Public_Key() =default;
+      Public_Key() = default;
       Public_Key(const Public_Key& other) = default;
       Public_Key& operator=(const Public_Key& other) = default;
       virtual ~Public_Key() = default;
@@ -194,6 +193,14 @@ class BOTAN_PUBLIC_API(2,0) Private_Key : public virtual Public_Key
       virtual secure_vector<uint8_t> private_key_bits() const = 0;
 
       /**
+      * Allocate a new object for the public key associated with this
+      * private key.
+      *
+      * @return public key
+      */
+      virtual std::unique_ptr<Public_Key> public_key() const = 0;
+
+      /**
       * @return PKCS #8 private key encoding for this key object
       */
       secure_vector<uint8_t> private_key_info() const;
@@ -211,12 +218,6 @@ class BOTAN_PUBLIC_API(2,0) Private_Key : public virtual Public_Key
        * @return Hash of the PKCS #8 encoding for this key object
        */
       std::string fingerprint_private(const std::string& alg) const;
-
-      BOTAN_DEPRECATED("Use fingerprint_private or fingerprint_public")
-         inline std::string fingerprint(const std::string& alg) const
-         {
-         return fingerprint_private(alg); // match behavior in previous versions
-         }
 
       /**
       * This is an internal library function exposed on key types.

@@ -9,18 +9,12 @@
 #include <botan/data_src.h>
 #include <botan/ber_dec.h>
 #include <botan/pem.h>
-#include <botan/alg_id.h>
+#include <botan/asn1_obj.h>
 #include <botan/pk_algs.h>
 
 namespace Botan {
 
 namespace X509 {
-
-std::vector<uint8_t> BER_encode(const Public_Key& key)
-   {
-   // keeping it around for compat
-   return key.subject_public_key();
-   }
 
 /*
 * PEM encode a X.509 public key
@@ -43,9 +37,9 @@ Public_Key* load_key(DataSource& source)
       if(ASN1::maybe_BER(source) && !PEM_Code::matches(source))
          {
          BER_Decoder(source)
-            .start_cons(SEQUENCE)
+            .start_sequence()
             .decode(alg_id)
-            .decode(key_bits, BIT_STRING)
+            .decode(key_bits, ASN1_Tag::BIT_STRING)
          .end_cons();
          }
       else
@@ -55,9 +49,9 @@ Public_Key* load_key(DataSource& source)
             );
 
          BER_Decoder(ber)
-            .start_cons(SEQUENCE)
+            .start_sequence()
             .decode(alg_id)
-            .decode(key_bits, BIT_STRING)
+            .decode(key_bits, ASN1_Tag::BIT_STRING)
          .end_cons();
          }
 
@@ -70,35 +64,6 @@ Public_Key* load_key(DataSource& source)
       {
       throw Decoding_Error("X.509 public key decoding", e);
       }
-   }
-
-#if defined(BOTAN_TARGET_OS_HAS_FILESYSTEM)
-/*
-* Extract a public key and return it
-*/
-Public_Key* load_key(const std::string& fsname)
-   {
-   DataSource_Stream source(fsname, true);
-   return X509::load_key(source);
-   }
-#endif
-
-/*
-* Extract a public key and return it
-*/
-Public_Key* load_key(const std::vector<uint8_t>& mem)
-   {
-   DataSource_Memory source(mem);
-   return X509::load_key(source);
-   }
-
-/*
-* Make a copy of this public key
-*/
-Public_Key* copy_key(const Public_Key& key)
-   {
-   DataSource_Memory source(PEM_encode(key));
-   return X509::load_key(source);
    }
 
 }

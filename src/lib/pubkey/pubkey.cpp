@@ -8,7 +8,7 @@
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
 #include <botan/bigint.h>
-#include <botan/pk_ops.h>
+#include <botan/internal/pk_ops.h>
 #include <botan/internal/ct_utils.h>
 #include <botan/rng.h>
 
@@ -94,7 +94,7 @@ PK_Encryptor_EME::PK_Encryptor_EME(const Public_Key& key,
       throw Invalid_Argument("Key type " + key.algo_name() + " does not support encryption");
    }
 
-PK_Encryptor_EME::~PK_Encryptor_EME() { /* for unique_ptr */ }
+PK_Encryptor_EME::~PK_Encryptor_EME() = default;
 
 size_t PK_Encryptor_EME::ciphertext_length(size_t ptext_len) const
    {
@@ -122,7 +122,7 @@ PK_Decryptor_EME::PK_Decryptor_EME(const Private_Key& key,
       throw Invalid_Argument("Key type " + key.algo_name() + " does not support decryption");
    }
 
-PK_Decryptor_EME::~PK_Decryptor_EME() { /* for unique_ptr */ }
+PK_Decryptor_EME::~PK_Decryptor_EME() = default;
 
 size_t PK_Decryptor_EME::plaintext_length(size_t ctext_len) const
    {
@@ -145,7 +145,7 @@ PK_KEM_Encryptor::PK_KEM_Encryptor(const Public_Key& key,
       throw Invalid_Argument("Key type " + key.algo_name() + " does not support KEM encryption");
    }
 
-PK_KEM_Encryptor::~PK_KEM_Encryptor() { /* for unique_ptr */ }
+PK_KEM_Encryptor::~PK_KEM_Encryptor() = default;
 
 void PK_KEM_Encryptor::encrypt(secure_vector<uint8_t>& out_encapsulated_key,
                                secure_vector<uint8_t>& out_shared_key,
@@ -172,7 +172,7 @@ PK_KEM_Decryptor::PK_KEM_Decryptor(const Private_Key& key,
       throw Invalid_Argument("Key type " + key.algo_name() + " does not support KEM decryption");
    }
 
-PK_KEM_Decryptor::~PK_KEM_Decryptor() { /* for unique_ptr */ }
+PK_KEM_Decryptor::~PK_KEM_Decryptor() = default;
 
 secure_vector<uint8_t> PK_KEM_Decryptor::decrypt(const uint8_t encap_key[],
                                               size_t encap_key_len,
@@ -185,6 +185,8 @@ secure_vector<uint8_t> PK_KEM_Decryptor::decrypt(const uint8_t encap_key[],
                             salt, salt_len);
    }
 
+PK_Key_Agreement::PK_Key_Agreement(PK_Key_Agreement&&) = default;
+
 PK_Key_Agreement::PK_Key_Agreement(const Private_Key& key,
                                    RandomNumberGenerator& rng,
                                    const std::string& kdf,
@@ -195,20 +197,7 @@ PK_Key_Agreement::PK_Key_Agreement(const Private_Key& key,
       throw Invalid_Argument("Key type " + key.algo_name() + " does not support key agreement");
    }
 
-PK_Key_Agreement::~PK_Key_Agreement() { /* for unique_ptr */ }
-
-PK_Key_Agreement& PK_Key_Agreement::operator=(PK_Key_Agreement&& other)
-   {
-   if(this != &other)
-      {
-      m_op = std::move(other.m_op);
-      }
-   return (*this);
-   }
-
-PK_Key_Agreement::PK_Key_Agreement(PK_Key_Agreement&& other) :
-   m_op(std::move(other.m_op))
-   {}
+PK_Key_Agreement::~PK_Key_Agreement() = default;
 
 size_t PK_Key_Agreement::agreed_value_size() const
    {
@@ -223,6 +212,12 @@ SymmetricKey PK_Key_Agreement::derive_key(size_t key_len,
    return m_op->agree(key_len, in, in_len, salt, salt_len);
    }
 
+static void check_der_format_supported(Signature_Format format, size_t parts)
+   {
+      if(format != IEEE_1363 && parts == 1)
+         throw Invalid_Argument("PK: This algorithm does not support DER encoding");
+   }
+
 PK_Signer::PK_Signer(const Private_Key& key,
                      RandomNumberGenerator& rng,
                      const std::string& emsa,
@@ -235,9 +230,10 @@ PK_Signer::PK_Signer(const Private_Key& key,
    m_sig_format = format;
    m_parts = key.message_parts();
    m_part_size = key.message_part_size();
+   check_der_format_supported(format, m_parts);
    }
 
-PK_Signer::~PK_Signer() { /* for unique_ptr */ }
+PK_Signer::~PK_Signer() = default;
 
 void PK_Signer::update(const uint8_t in[], size_t length)
    {
@@ -259,7 +255,7 @@ std::vector<uint8_t> der_encode_signature(const std::vector<uint8_t>& sig,
 
    std::vector<uint8_t> output;
    DER_Encoder(output)
-      .start_cons(SEQUENCE)
+      .start_sequence()
       .encode_list(sig_parts)
       .end_cons();
    return output;
@@ -310,14 +306,14 @@ PK_Verifier::PK_Verifier(const Public_Key& key,
    m_sig_format = format;
    m_parts = key.message_parts();
    m_part_size = key.message_part_size();
+   check_der_format_supported(format, m_parts);
    }
 
-PK_Verifier::~PK_Verifier() { /* for unique_ptr */ }
+PK_Verifier::~PK_Verifier() = default;
 
 void PK_Verifier::set_input_format(Signature_Format format)
    {
-   if(format != IEEE_1363 && m_parts == 1)
-      throw Invalid_Argument("PK_Verifier: This algorithm does not support DER encoding");
+   check_der_format_supported(format, m_parts);
    m_sig_format = format;
    }
 
@@ -344,7 +340,7 @@ bool PK_Verifier::check_signature(const uint8_t sig[], size_t length)
          {
          std::vector<uint8_t> real_sig;
          BER_Decoder decoder(sig, length);
-         BER_Decoder ber_sig = decoder.start_cons(SEQUENCE);
+         BER_Decoder ber_sig = decoder.start_sequence();
 
          BOTAN_ASSERT_NOMSG(m_parts != 0 && m_part_size != 0);
 
@@ -376,6 +372,8 @@ bool PK_Verifier::check_signature(const uint8_t sig[], size_t length)
          throw Internal_Error("PK_Verifier: Invalid signature format enum");
       }
    catch(Invalid_Argument&) { return false; }
+   catch(Decoding_Error&) { return false; }
+   catch(Encoding_Error&) { return false; }
    }
 
 }

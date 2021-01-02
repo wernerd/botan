@@ -13,10 +13,10 @@
 #include <botan/oids.h>
 #include <botan/base64.h>
 #include <botan/pubkey.h>
-#include <botan/parsing.h>
+#include <botan/internal/parsing.h>
 
 #if defined(BOTAN_HAS_HTTP_UTIL)
-  #include <botan/http_util.h>
+  #include <botan/internal/http_util.h>
 #endif
 
 namespace Botan {
@@ -32,7 +32,7 @@ void decode_optional_list(BER_Decoder& ber,
    {
    BER_Object obj = ber.get_next_object();
 
-   if(obj.is_a(tag, ASN1_Tag(CONTEXT_SPECIFIC | CONSTRUCTED)) == false)
+   if(obj.is_a(tag, ASN1_Tag::CONTEXT_SPECIFIC | ASN1_Tag::CONSTRUCTED) == false)
       {
       ber.push_back(obj);
       return;
@@ -69,13 +69,13 @@ Request::Request(const X509_Certificate& issuer_cert,
 std::vector<uint8_t> Request::BER_encode() const
    {
    std::vector<uint8_t> output;
-   DER_Encoder(output).start_cons(SEQUENCE)
-        .start_cons(SEQUENCE)
+   DER_Encoder(output).start_sequence()
+        .start_sequence()
           .start_explicit(0)
             .encode(static_cast<size_t>(0)) // version #
           .end_explicit()
-            .start_cons(SEQUENCE)
-              .start_cons(SEQUENCE)
+            .start_sequence()
+              .start_sequence()
                 .encode(m_certid)
               .end_cons()
             .end_cons()
@@ -101,11 +101,11 @@ Response::Response(const uint8_t response_bits[], size_t response_bits_len) :
    {
    m_dummy_response_status = Certificate_Status_Code::OCSP_RESPONSE_INVALID;
 
-   BER_Decoder response_outer = BER_Decoder(m_response_bits).start_cons(SEQUENCE);
+   BER_Decoder response_outer = BER_Decoder(m_response_bits).start_sequence();
 
    size_t resp_status = 0;
 
-   response_outer.decode(resp_status, ENUMERATED, UNIVERSAL);
+   response_outer.decode(resp_status, ASN1_Tag::ENUMERATED, ASN1_Tag::UNIVERSAL);
 
    m_status = static_cast<Response_Status_Code>(resp_status);
 
@@ -115,19 +115,19 @@ Response::Response(const uint8_t response_bits[], size_t response_bits_len) :
    if(response_outer.more_items())
       {
       BER_Decoder response_bytes =
-         response_outer.start_cons(ASN1_Tag(0), CONTEXT_SPECIFIC).start_cons(SEQUENCE);
+         response_outer.start_cons(ASN1_Tag(0), ASN1_Tag::CONTEXT_SPECIFIC).start_sequence();
 
       response_bytes.decode_and_check(OID("1.3.6.1.5.5.7.48.1.1"),
                                       "Unknown response type in OCSP response");
 
       BER_Decoder basicresponse =
-         BER_Decoder(response_bytes.get_next_octet_string()).start_cons(SEQUENCE);
+         BER_Decoder(response_bytes.get_next_octet_string()).start_sequence();
 
-      basicresponse.start_cons(SEQUENCE)
+      basicresponse.start_sequence()
            .raw_bytes(m_tbs_bits)
          .end_cons()
          .decode(m_sig_algo)
-         .decode(m_signature, BIT_STRING);
+         .decode(m_signature, ASN1_Tag::BIT_STRING);
       decode_optional_list(basicresponse, ASN1_Tag(0), m_certs);
 
       size_t responsedata_version = 0;
@@ -135,20 +135,20 @@ Response::Response(const uint8_t response_bits[], size_t response_bits_len) :
 
       BER_Decoder(m_tbs_bits)
          .decode_optional(responsedata_version, ASN1_Tag(0),
-                          ASN1_Tag(CONSTRUCTED | CONTEXT_SPECIFIC))
+                          ASN1_Tag::CONTEXT_SPECIFIC | ASN1_Tag::CONSTRUCTED)
 
          .decode_optional(m_signer_name, ASN1_Tag(1),
-                          ASN1_Tag(CONSTRUCTED | CONTEXT_SPECIFIC))
+                          ASN1_Tag::CONTEXT_SPECIFIC | ASN1_Tag::CONSTRUCTED)
 
-         .decode_optional_string(m_key_hash, OCTET_STRING, 2,
-                                 ASN1_Tag(CONSTRUCTED | CONTEXT_SPECIFIC))
+         .decode_optional_string(m_key_hash, ASN1_Tag::OCTET_STRING, 2,
+                                 ASN1_Tag::CONTEXT_SPECIFIC | ASN1_Tag::CONSTRUCTED)
 
          .decode(m_produced_at)
 
          .decode_list(m_responses)
 
          .decode_optional(extensions, ASN1_Tag(1),
-                          ASN1_Tag(CONSTRUCTED | CONTEXT_SPECIFIC));
+                          ASN1_Tag::CONTEXT_SPECIFIC | ASN1_Tag::CONSTRUCTED);
       }
 
    response_outer.end_cons();
@@ -186,12 +186,12 @@ Certificate_Status_Code Response::verify_signature(const X509_Certificate& issue
    }
 
 Certificate_Status_Code Response::check_signature(const std::vector<Certificate_Store*>& trusted_roots,
-                                                  const std::vector<std::shared_ptr<const X509_Certificate>>& ee_cert_path) const
+                                                  const std::vector<X509_Certificate>& ee_cert_path) const
    {
    if (m_responses.empty())
       return m_dummy_response_status;
 
-   std::shared_ptr<const X509_Certificate> signing_cert;
+   std::optional<X509_Certificate> signing_cert;
 
    for(size_t i = 0; i != trusted_roots.size(); ++i)
       {
@@ -223,13 +223,13 @@ Certificate_Status_Code Response::check_signature(const std::vector<Certificate_
       for(size_t i = 1; i < ee_cert_path.size(); ++i)
          {
          // Check all CA certificates in the (assumed validated) EE cert path
-         if(!m_signer_name.empty() && ee_cert_path[i]->subject_dn() == m_signer_name)
+         if(!m_signer_name.empty() && ee_cert_path[i].subject_dn() == m_signer_name)
             {
             signing_cert = ee_cert_path[i];
             break;
             }
 
-         if(m_key_hash.size() > 0 && ee_cert_path[i]->subject_public_key_bitstring_sha1() == m_key_hash)
+         if(m_key_hash.size() > 0 && ee_cert_path[i].subject_public_key_bitstring_sha1() == m_key_hash)
             {
             signing_cert = ee_cert_path[i];
             break;
@@ -244,13 +244,13 @@ Certificate_Status_Code Response::check_signature(const std::vector<Certificate_
          // Check all CA certificates in the (assumed validated) EE cert path
          if(!m_signer_name.empty() && m_certs[i].subject_dn() == m_signer_name)
             {
-            signing_cert = std::make_shared<const X509_Certificate>(m_certs[i]);
+            signing_cert = m_certs[i];
             break;
             }
 
          if(m_key_hash.size() > 0 && m_certs[i].subject_public_key_bitstring_sha1() == m_key_hash)
             {
-            signing_cert = std::make_shared<const X509_Certificate>(m_certs[i]);
+            signing_cert = m_certs[i];
             break;
             }
          }

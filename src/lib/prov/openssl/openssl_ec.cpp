@@ -48,14 +48,14 @@ secure_vector<uint8_t> PKCS8_for_openssl(const EC_PrivateKey& ec)
    const BigInt& priv_key = ec.private_value();
 
    return DER_Encoder()
-     .start_cons(SEQUENCE)
+     .start_sequence()
         .encode(static_cast<size_t>(1))
-        .encode(BigInt::encode_1363(priv_key, priv_key.bytes()), OCTET_STRING)
-      .start_cons(ASN1_Tag(0), PRIVATE)
-      .raw_bytes(ec.domain().DER_encode(EC_DOMPAR_ENC_OID))
+        .encode(BigInt::encode_1363(priv_key, priv_key.bytes()), ASN1_Tag::OCTET_STRING)
+      .start_cons(ASN1_Tag(0), ASN1_Tag::PRIVATE)
+      .raw_bytes(ec.domain().DER_encode(EC_Group_Encoding::NamedCurve))
       .end_cons()
-      .start_cons(ASN1_Tag(1), PRIVATE)
-      .encode(pub_key.encode(PointGFp::UNCOMPRESSED), BIT_STRING)
+      .start_cons(ASN1_Tag(1), ASN1_Tag::PRIVATE)
+      .encode(pub_key.encode(PointGFp::UNCOMPRESSED), ASN1_Tag::BIT_STRING)
       .end_cons()
       .end_cons()
       .get_contents();
@@ -170,22 +170,17 @@ class OpenSSL_ECDSA_Verification_Operation final : public PK_Ops::Verification_w
          std::unique_ptr<ECDSA_SIG, std::function<void (ECDSA_SIG*)>> sig(nullptr, ECDSA_SIG_free);
          sig.reset(::ECDSA_SIG_new());
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-         sig->r = BN_bin2bn(sig_bytes              , sig_len / 2, sig->r);
-         sig->s = BN_bin2bn(sig_bytes + sig_len / 2, sig_len / 2, sig->s);
-#else
-         BIGNUM* r = BN_bin2bn(sig_bytes              , sig_len / 2, nullptr);
-         BIGNUM* s = BN_bin2bn(sig_bytes + sig_len / 2, sig_len / 2, nullptr);
+         BIGNUM* r = BN_bin2bn(sig_bytes              , static_cast<int>(sig_len / 2), nullptr);
+         BIGNUM* s = BN_bin2bn(sig_bytes + sig_len / 2, static_cast<int>(sig_len / 2), nullptr);
          if(r == nullptr || s == nullptr)
             throw OpenSSL_Error("BN_bin2bn sig s", ERR_get_error());
 
          ECDSA_SIG_set0(sig.get(), r, s);
-#endif
 
-         const int res = ECDSA_do_verify(msg, msg_len, sig.get(), m_ossl_ec.get());
+         const int res = ECDSA_do_verify(msg, static_cast<int>(msg_len), sig.get(), m_ossl_ec.get());
          if(res < 0)
             {
-            int err = ERR_get_error();
+            auto err = ERR_get_error();
 
             bool hard_error = true;
 
@@ -237,7 +232,7 @@ class OpenSSL_ECDSA_Signing_Operation final : public PK_Ops::Signature_with_EMSA
                                    RandomNumberGenerator&) override
          {
          std::unique_ptr<ECDSA_SIG, std::function<void (ECDSA_SIG*)>> sig(nullptr, ECDSA_SIG_free);
-         sig.reset(::ECDSA_do_sign(msg, msg_len, m_ossl_ec.get()));
+         sig.reset(::ECDSA_do_sign(msg, static_cast<int>(msg_len), m_ossl_ec.get()));
 
          if(!sig)
             throw OpenSSL_Error("ECDSA_do_sign", ERR_get_error());

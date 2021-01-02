@@ -37,7 +37,7 @@
 #include "tls_helpers.h"
 
 #if BOOST_VERSION >= 107000
-#define GET_IO_SERVICE(s) ((boost::asio::io_context&)(s).get_executor().context())
+#define GET_IO_SERVICE(s) (static_cast<boost::asio::io_context&>((s).get_executor().context()))
 #else
 #define GET_IO_SERVICE(s) ((s).get_io_service())
 #endif
@@ -528,7 +528,7 @@ class TLS_HTTP_Server final : public Command
          const size_t num_threads = thread_count();
          const size_t max_clients = get_arg_sz("max-clients");
 
-         Basic_Credentials_Manager creds(rng(), server_crt, server_key);
+         Basic_Credentials_Manager creds(server_crt, server_key);
 
          auto policy = load_tls_policy(get_arg("policy"));
 

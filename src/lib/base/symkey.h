@@ -45,11 +45,6 @@ class BOTAN_PUBLIC_API(2,0) OctetString final
       */
       std::string to_string() const;
 
-      std::string BOTAN_DEPRECATED("Use OctetString::to_string") as_string() const
-         {
-         return this->to_string();
-         }
-
       /**
       * XOR the contents of another octet string into this one
       * @param other octet string
@@ -59,7 +54,12 @@ class BOTAN_PUBLIC_API(2,0) OctetString final
 
       /**
       * Force to have odd parity
+      *
+      * Deprecated. There is no reason to use this outside of interacting with
+      * some very old or weird system which requires DES and also which do not
+      * automatically ignore the parity bits.
       */
+      BOTAN_DEPRECATED("Why would you need to do this")
       void set_odd_parity();
 
       /**

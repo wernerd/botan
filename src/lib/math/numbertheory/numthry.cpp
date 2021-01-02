@@ -1,14 +1,15 @@
 /*
 * Number Theory Functions
 * (C) 1999-2011,2016,2018,2019 Jack Lloyd
+* (C) 2007,2008 Falko Strenzke, FlexSecure GmbH
 *
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
 #include <botan/numthry.h>
 #include <botan/reducer.h>
-#include <botan/monty.h>
-#include <botan/divide.h>
+#include <botan/internal/monty.h>
+#include <botan/internal/divide.h>
 #include <botan/rng.h>
 #include <botan/internal/ct_utils.h>
 #include <botan/internal/mp_core.h>
@@ -32,6 +33,145 @@ void sub_abs(BigInt& z, const BigInt& x, const BigInt& y)
    }
 
 }
+
+/*
+* Tonelli-Shanks algorithm
+*/
+BigInt ressol(const BigInt& a, const BigInt& p)
+   {
+   if(p <= 1 || p.is_even())
+      throw Invalid_Argument("ressol: invalid prime");
+
+   if(a == 0)
+      return 0;
+   else if(a < 0)
+      throw Invalid_Argument("ressol: value to solve for must be positive");
+   else if(a >= p)
+      throw Invalid_Argument("ressol: value to solve for must be less than p");
+
+   if(p == 2)
+      return a;
+
+   if(jacobi(a, p) != 1) // not a quadratic residue
+      return -BigInt(1);
+
+   Modular_Reducer mod_p(p);
+   auto monty_p = std::make_shared<Montgomery_Params>(p, mod_p);
+
+   if(p % 4 == 3) // The easy case
+      {
+      return monty_exp_vartime(monty_p, a, ((p+1) >> 2));
+      }
+
+   size_t s = low_zero_bits(p - 1);
+   BigInt q = p >> s;
+
+   q -= 1;
+   q >>= 1;
+
+   BigInt r = monty_exp_vartime(monty_p, a, q);
+   BigInt n = mod_p.multiply(a, mod_p.square(r));
+   r = mod_p.multiply(r, a);
+
+   if(n == 1)
+      return r;
+
+   // find random quadratic nonresidue z
+   word z = 2;
+   for(;;)
+      {
+      if(jacobi(z, p) == -1) // found one
+         break;
+
+      z += 1; // try next z
+
+      /*
+      * The expected number of tests to find a non-residue modulo a
+      * prime is 2. If we have not found one after 256 then almost
+      * certainly we have been given a non-prime p.
+      */
+      if(z >= 256)
+         return -BigInt(1);
+      }
+
+   BigInt c = monty_exp_vartime(monty_p, z, (q << 1) + 1);
+
+   while(n > 1)
+      {
+      q = n;
+
+      size_t i = 0;
+      while(q != 1)
+         {
+         q = mod_p.square(q);
+         ++i;
+
+         if(i >= s)
+            {
+            return -BigInt(1);
+            }
+         }
+
+      c = monty_exp_vartime(monty_p, c, BigInt::power_of_2(s-i-1));
+      r = mod_p.multiply(r, c);
+      c = mod_p.square(c);
+      n = mod_p.multiply(n, c);
+      s = i;
+      }
+
+   return r;
+   }
+
+/*
+* Calculate the Jacobi symbol
+*/
+int32_t jacobi(const BigInt& a, const BigInt& n)
+   {
+   if(n.is_even() || n < 2)
+      throw Invalid_Argument("jacobi: second argument must be odd and > 1");
+
+   BigInt x = a % n;
+   BigInt y = n;
+   int32_t J = 1;
+
+   while(y > 1)
+      {
+      x %= y;
+      if(x > y / 2)
+         {
+         x = y - x;
+         if(y % 4 == 3)
+            J = -J;
+         }
+      if(x.is_zero())
+         return 0;
+
+      size_t shifts = low_zero_bits(x);
+      x >>= shifts;
+      if(shifts % 2)
+         {
+         word y_mod_8 = y % 8;
+         if(y_mod_8 == 3 || y_mod_8 == 5)
+            J = -J;
+         }
+
+      if(x % 4 == 3 && y % 4 == 3)
+         J = -J;
+      std::swap(x, y);
+      }
+   return J;
+   }
+
+/*
+* Square a BigInt
+*/
+BigInt square(const BigInt& x)
+   {
+   BigInt z = x;
+   secure_vector<word> ws;
+   z.square(ws);
+   return z;
+   }
 
 /*
 * Return the number of 0 bits at the end of n
@@ -150,11 +290,8 @@ BigInt power_mod(const BigInt& base, const BigInt& exp, const BigInt& mod)
 
    if(mod.is_odd())
       {
-      const size_t powm_window = 4;
-
-      auto monty_mod = std::make_shared<Montgomery_Params>(mod, reduce_mod);
-      auto powm_base_mod = monty_precompute(monty_mod, reduce_mod.reduce(base), powm_window);
-      return monty_execute(*powm_base_mod, exp, exp_bits);
+      auto monty_params = std::make_shared<Montgomery_Params>(mod, reduce_mod);
+      return monty_exp(monty_params, reduce_mod.reduce(base), exp, exp_bits);
       }
 
    /*
@@ -236,7 +373,10 @@ bool is_prime(const BigInt& n,
       if(is_miller_rabin_probable_prime(n, mod_n, rng, t) == false)
          return false;
 
-      return is_lucas_probable_prime(n, mod_n);
+      if(is_random)
+         return true;
+      else
+         return is_lucas_probable_prime(n, mod_n);
       }
    else
       {

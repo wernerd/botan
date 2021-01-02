@@ -5,7 +5,7 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/divide.h>
+#include <botan/internal/divide.h>
 #include <botan/internal/mp_core.h>
 #include <botan/internal/mp_madd.h>
 #include <botan/internal/ct_utils.h>
@@ -156,10 +156,10 @@ BigInt ct_modulo(const BigInt& x, const BigInt& y)
 *
 * See Handbook of Applied Cryptography section 14.2.5
 */
-void divide(const BigInt& x, const BigInt& y_arg, BigInt& q_out, BigInt& r_out)
+void vartime_divide(const BigInt& x, const BigInt& y_arg, BigInt& q_out, BigInt& r_out)
    {
    if(y_arg.is_zero())
-      throw BigInt::DivideByZero();
+      throw Invalid_Argument("vartime_divide: cannot divide by zero");
 
    const size_t y_words = y_arg.sig_words();
 

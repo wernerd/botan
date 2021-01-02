@@ -10,7 +10,7 @@
 #include <botan/internal/tls_seq_numbers.h>
 #include <botan/tls_messages.h>
 #include <botan/exceptn.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <chrono>
 
 namespace Botan {
@@ -167,6 +167,11 @@ void Datagram_Handshake_IO::retransmit_flight(size_t flight_idx)
       send_message(msg_seq, msg.epoch, msg.msg_type, msg.msg_bits);
       epoch = msg.epoch;
       }
+   }
+
+bool Datagram_Handshake_IO::have_more_data() const
+   {
+   return false;
    }
 
 bool Datagram_Handshake_IO::timeout_check()

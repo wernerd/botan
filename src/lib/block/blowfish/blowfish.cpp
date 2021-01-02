@@ -5,8 +5,8 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/blowfish.h>
-#include <botan/loadstor.h>
+#include <botan/internal/blowfish.h>
+#include <botan/internal/loadstor.h>
 
 namespace Botan {
 
@@ -192,8 +192,12 @@ const uint32_t S_INIT[1024] = {
 
 inline uint32_t BFF(uint32_t X, const secure_vector<uint32_t>& S)
    {
-   return ((S[    get_byte(0, X)]  + S[256+get_byte(1, X)]) ^
-            S[512+get_byte(2, X)]) + S[768+get_byte(3, X)];
+   const uint32_t s0 = S[get_byte(0, X)];
+   const uint32_t s1 = S[get_byte(1, X) + 256];
+   const uint32_t s2 = S[get_byte(2, X) + 512];
+   const uint32_t s3 = S[get_byte(3, X) + 768];
+
+   return (((s0 + s1) ^ s2) + s3);
    }
 
 }

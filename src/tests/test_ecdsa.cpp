@@ -12,6 +12,7 @@
 #if defined(BOTAN_HAS_ECDSA)
    #include "test_pubkey.h"
    #include <botan/ecdsa.h>
+   #include <botan/pk_algs.h>
 #endif
 
 namespace Botan_Tests {
@@ -26,7 +27,8 @@ class ECDSA_Verification_Tests final : public PK_Signature_Verification_Test
       ECDSA_Verification_Tests() : PK_Signature_Verification_Test(
             "ECDSA",
             "pubkey/ecdsa_verify.vec",
-            "Group,Px,Py,Hash,Msg,Signature") {}
+            "Group,Px,Py,Hash,Msg,Signature",
+            "Valid") {}
 
       bool clear_between_callbacks() const override
          {
@@ -138,6 +140,18 @@ class ECDSA_Signature_KAT_Tests final : public PK_Signature_Generation_Test
 #endif
    };
 
+class ECDSA_Sign_Verify_DER_Test final : public PK_Sign_Verify_DER_Test
+   {
+   public:
+      ECDSA_Sign_Verify_DER_Test() :
+         PK_Sign_Verify_DER_Test("ECDSA", "EMSA1(SHA-512)") {}
+
+      std::unique_ptr<Botan::Private_Key> key() const override
+         {
+         return Botan::create_private_key( "ECDSA",  Test::rng(), "secp256r1" );
+         }
+   };
+
 class ECDSA_Keygen_Tests final : public PK_Key_Generation_Test
    {
    public:
@@ -197,7 +211,7 @@ class ECDSA_Key_Recovery_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("ecdsa_key_recovery", ECDSA_Key_Recovery_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecdsa_key_recovery", ECDSA_Key_Recovery_Tests);
 
 #endif
 
@@ -242,11 +256,12 @@ class ECDSA_Invalid_Key_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("ecdsa_verify", ECDSA_Verification_Tests);
-BOTAN_REGISTER_TEST("ecdsa_verify_wycheproof", ECDSA_Wycheproof_Verification_Tests);
-BOTAN_REGISTER_TEST("ecdsa_sign", ECDSA_Signature_KAT_Tests);
-BOTAN_REGISTER_TEST("ecdsa_keygen", ECDSA_Keygen_Tests);
-BOTAN_REGISTER_TEST("ecdsa_invalid", ECDSA_Invalid_Key_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecdsa_verify", ECDSA_Verification_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecdsa_verify_wycheproof", ECDSA_Wycheproof_Verification_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecdsa_sign", ECDSA_Signature_KAT_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecdsa_sign_verify_der", ECDSA_Sign_Verify_DER_Test);
+BOTAN_REGISTER_TEST("pubkey", "ecdsa_keygen", ECDSA_Keygen_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecdsa_invalid", ECDSA_Invalid_Key_Tests);
 
 #endif
 

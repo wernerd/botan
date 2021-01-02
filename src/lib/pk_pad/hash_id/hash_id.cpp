@@ -5,7 +5,7 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/hash_id.h>
+#include <botan/internal/hash_id.h>
 #include <botan/exceptn.h>
 
 namespace Botan {
@@ -64,10 +64,6 @@ const uint8_t SM3_PKCS_ID[] = {
 0x30, 0x30, 0x30, 0x0C, 0x06, 0x08, 0x2A, 0x81, 0x1C, 0xCF,
 0x55, 0x01, 0x83, 0x11, 0x05, 0x00, 0x04, 0x20,
 };
-
-const uint8_t TIGER_PKCS_ID[] = {
-0x30, 0x29, 0x30, 0x0D, 0x06, 0x09, 0x2B, 0x06, 0x01, 0x04,
-0x01, 0xDA, 0x47, 0x0C, 0x02, 0x05, 0x00, 0x04, 0x18 };
 
 }
 
@@ -132,10 +128,6 @@ std::vector<uint8_t> pkcs_hash_id(const std::string& name)
 
    if(name == "SM3")
       return std::vector<uint8_t>(SM3_PKCS_ID, SM3_PKCS_ID + sizeof(SM3_PKCS_ID));
-
-   if(name == "Tiger(24,3)")
-      return std::vector<uint8_t>(TIGER_PKCS_ID,
-                               TIGER_PKCS_ID + sizeof(TIGER_PKCS_ID));
 
    throw Invalid_Argument("No PKCS #1 identifier for " + name);
    }

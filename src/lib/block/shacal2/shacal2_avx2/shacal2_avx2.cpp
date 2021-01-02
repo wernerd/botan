@@ -4,7 +4,7 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/shacal2.h>
+#include <botan/internal/shacal2.h>
 #include <botan/internal/simd_avx2.h>
 
 namespace Botan {
@@ -16,9 +16,9 @@ void BOTAN_FORCE_INLINE BOTAN_FUNC_ISA("avx2")
                const SIMD_8x32& E, const SIMD_8x32& F, const SIMD_8x32& G, SIMD_8x32& H,
                uint32_t RK)
    {
-   H += E.rho<6,11,25>() + ((E & F) ^ (~E & G)) + SIMD_8x32::splat(RK);
+   H += E.sigma1() + SIMD_8x32::choose(E, F, G) + SIMD_8x32::splat(RK);
    D += H;
-   H += A.rho<2,13,22>() + ((A & B) | ((A | B) & C));
+   H += A.sigma0() + SIMD_8x32::majority(A, B, C);
    }
 
 void BOTAN_FORCE_INLINE BOTAN_FUNC_ISA("avx2")
@@ -26,9 +26,9 @@ void BOTAN_FORCE_INLINE BOTAN_FUNC_ISA("avx2")
                const SIMD_8x32& E, const SIMD_8x32& F, const SIMD_8x32& G, SIMD_8x32& H,
                uint32_t RK)
    {
-   H -= A.rho<2,13,22>() + ((A & B) | ((A | B) & C));
+   H -= A.sigma0() + SIMD_8x32::majority(A, B, C);
    D -= H;
-   H -= E.rho<6,11,25>() + ((E & F) ^ (~E & G)) + SIMD_8x32::splat(RK);
+   H -= E.sigma1() + SIMD_8x32::choose(E, F, G) + SIMD_8x32::splat(RK);
    }
 
 }

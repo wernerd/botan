@@ -54,7 +54,7 @@ class Side
            m_ctx(m_credentials_manager, m_rng, m_session_mgr, m_policy, Botan::TLS::Server_Information()) {}
 
       Side(const std::string& server_cert, const std::string& server_key)
-         : m_credentials_manager(m_rng, server_cert, server_key),
+         : m_credentials_manager(server_cert, server_key),
            m_ctx(m_credentials_manager, m_rng, m_session_mgr, m_policy, Botan::TLS::Server_Information()) {}
 
       virtual ~Side() {}
@@ -80,7 +80,7 @@ class Side
             }
 
          return max_msg_length - bytes_transferred;
-         };
+         }
 
    protected:
       Botan::AutoSeeded_RNG m_rng;
@@ -292,7 +292,7 @@ class Client : public Side
    {
       static void accept_all(
          const std::vector<Botan::X509_Certificate>&,
-         const std::vector<std::shared_ptr<const Botan::OCSP::Response>>&,
+         const std::vector<std::optional<Botan::OCSP::Response>>&,
          const std::vector<Botan::Certificate_Store*>&, Botan::Usage_Type,
          const std::string&, const Botan::TLS::Policy&) {}
 
@@ -327,6 +327,8 @@ class TestBase
          : m_client(ioc),
            m_server(server),
            m_result(ioc, name) {}
+
+      virtual ~TestBase() = default;
 
       virtual void finishAsynchronousWork() {}
 
@@ -497,7 +499,7 @@ class Test_Eager_Close_Sync : public Synchronous_Test
       Test_Eager_Close_Sync(net::io_context& ioc, std::shared_ptr<Server> server)
          : Synchronous_Test(ioc, server, "Test Eager Close Sync") {}
 
-      void run_synchronous_client()
+      void run_synchronous_client() override
          {
          error_code ec;
 
@@ -572,7 +574,7 @@ class Test_Close_Without_Shutdown_Sync : public Synchronous_Test
       Test_Close_Without_Shutdown_Sync(net::io_context& ioc, std::shared_ptr<Server> server)
          : Synchronous_Test(ioc, server, "Test Close Without Shutdown Sync") {}
 
-      void run_synchronous_client()
+      void run_synchronous_client() override
          {
          error_code ec;
          net::connect(m_client.stream().lowest_layer(), k_endpoints, ec);
@@ -643,7 +645,7 @@ class Test_No_Shutdown_Response_Sync : public Synchronous_Test
       Test_No_Shutdown_Response_Sync(net::io_context& ioc, std::shared_ptr<Server> server)
          : Synchronous_Test(ioc, server, "Test No Shutdown Response Sync") {}
 
-      void run_synchronous_client()
+      void run_synchronous_client() override
          {
          error_code ec;
          net::connect(m_client.stream().lowest_layer(), k_endpoints, ec);
@@ -716,7 +718,7 @@ class Tls_Stream_Integration_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("tls_stream_integration", Tls_Stream_Integration_Tests);
+BOTAN_REGISTER_TEST("tls", "tls_stream_integration", Tls_Stream_Integration_Tests);
 
 }  // namespace Botan_Tests
 

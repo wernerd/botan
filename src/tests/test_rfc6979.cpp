@@ -7,7 +7,7 @@
 #include "tests.h"
 
 #if defined(BOTAN_HAS_RFC6979_GENERATOR)
-   #include <botan/rfc6979.h>
+   #include <botan/internal/rfc6979.h>
    #include <botan/hash.h>
 #endif
 
@@ -51,7 +51,7 @@ class RFC6979_KAT_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("rfc6979", RFC6979_KAT_Tests);
+BOTAN_REGISTER_TEST("pubkey", "rfc6979", RFC6979_KAT_Tests);
 
 #endif
 

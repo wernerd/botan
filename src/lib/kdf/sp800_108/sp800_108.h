@@ -11,14 +11,12 @@
 #include <botan/kdf.h>
 #include <botan/mac.h>
 
-BOTAN_FUTURE_INTERNAL_HEADER(sp800_108.h)
-
 namespace Botan {
 
 /**
  * NIST SP 800-108 KDF in Counter Mode (5.1)
  */
-class BOTAN_PUBLIC_API(2,0) SP800_108_Counter final : public KDF
+class SP800_108_Counter final : public KDF
    {
    public:
       std::string name() const override { return "SP800-108-Counter(" + m_prf->name() + ")"; }
@@ -42,7 +40,7 @@ class BOTAN_PUBLIC_API(2,0) SP800_108_Counter final : public KDF
       *
       * @throws Invalid_Argument key_len > 2^32
       */
-      size_t kdf(uint8_t key[], size_t key_len,
+      void kdf(uint8_t key[], size_t key_len,
                  const uint8_t secret[], size_t secret_len,
                  const uint8_t salt[], size_t salt_len,
                  const uint8_t label[], size_t label_len) const override;
@@ -58,7 +56,7 @@ class BOTAN_PUBLIC_API(2,0) SP800_108_Counter final : public KDF
 /**
  * NIST SP 800-108 KDF in Feedback Mode (5.2)
  */
-class BOTAN_PUBLIC_API(2,0) SP800_108_Feedback final : public KDF
+class SP800_108_Feedback final : public KDF
    {
    public:
       std::string name() const override { return "SP800-108-Feedback(" + m_prf->name() + ")"; }
@@ -82,7 +80,7 @@ class BOTAN_PUBLIC_API(2,0) SP800_108_Feedback final : public KDF
       *
       * @throws Invalid_Argument key_len > 2^32
       */
-      size_t kdf(uint8_t key[], size_t key_len,
+      void kdf(uint8_t key[], size_t key_len,
                  const uint8_t secret[], size_t secret_len,
                  const uint8_t salt[], size_t salt_len,
                  const uint8_t label[], size_t label_len) const override;
@@ -95,7 +93,7 @@ class BOTAN_PUBLIC_API(2,0) SP800_108_Feedback final : public KDF
 /**
  * NIST SP 800-108 KDF in Double Pipeline Mode (5.3)
  */
-class BOTAN_PUBLIC_API(2,0) SP800_108_Pipeline final : public KDF
+class SP800_108_Pipeline final : public KDF
    {
    public:
       std::string name() const override { return "SP800-108-Pipeline(" + m_prf->name() + ")"; }
@@ -119,7 +117,7 @@ class BOTAN_PUBLIC_API(2,0) SP800_108_Pipeline final : public KDF
       *
       * @throws Invalid_Argument key_len > 2^32
       */
-      size_t kdf(uint8_t key[], size_t key_len,
+      void kdf(uint8_t key[], size_t key_len,
                  const uint8_t secret[], size_t secret_len,
                  const uint8_t salt[], size_t salt_len,
                  const uint8_t label[], size_t label_len) const override;

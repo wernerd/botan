@@ -6,7 +6,7 @@
 
 #include <botan/pwdhash.h>
 #include <botan/exceptn.h>
-#include <botan/scan_name.h>
+#include <botan/internal/scan_name.h>
 
 #if defined(BOTAN_HAS_PBKDF2)
    #include <botan/pbkdf2.h>
@@ -42,10 +42,10 @@ std::unique_ptr<PasswordHashFamily> PasswordHashFamily::create(const std::string
 
       if(provider.empty() || provider == "base")
          {
-         if(auto mac = MessageAuthenticationCode::create(req.arg(0)))
+         if(auto mac = MessageAuthenticationCode::create("HMAC(" + req.arg(0) + ")"))
             return std::unique_ptr<PasswordHashFamily>(new PBKDF2_Family(mac.release()));
 
-         if(auto mac = MessageAuthenticationCode::create("HMAC(" + req.arg(0) + ")"))
+         if(auto mac = MessageAuthenticationCode::create(req.arg(0)))
             return std::unique_ptr<PasswordHashFamily>(new PBKDF2_Family(mac.release()));
          }
 

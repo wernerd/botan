@@ -7,14 +7,14 @@
 
 #include <botan/rsa.h>
 #include <botan/internal/pk_ops_impl.h>
-#include <botan/keypair.h>
-#include <botan/blinding.h>
+#include <botan/internal/keypair.h>
+#include <botan/internal/blinding.h>
 #include <botan/reducer.h>
-#include <botan/workfactor.h>
+#include <botan/internal/workfactor.h>
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
-#include <botan/monty.h>
-#include <botan/divide.h>
+#include <botan/internal/monty.h>
+#include <botan/internal/divide.h>
 #include <botan/internal/monty_exp.h>
 
 #if defined(BOTAN_HAS_OPENSSL)
@@ -120,7 +120,7 @@ RSA_PublicKey::RSA_PublicKey(const AlgorithmIdentifier&,
    {
    BigInt n, e;
    BER_Decoder(key_bits)
-      .start_cons(SEQUENCE)
+      .start_sequence()
       .decode(n)
       .decode(e)
       .end_cons();
@@ -154,7 +154,7 @@ std::vector<uint8_t> RSA_PublicKey::public_key_bits() const
    {
    std::vector<uint8_t> output;
    DER_Encoder der(output);
-   der.start_cons(SEQUENCE)
+   der.start_sequence()
          .encode(get_n())
          .encode(get_e())
       .end_cons();
@@ -180,7 +180,7 @@ std::shared_ptr<const RSA_Private_Data> RSA_PrivateKey::private_data() const
 secure_vector<uint8_t> RSA_PrivateKey::private_key_bits() const
    {
    return DER_Encoder()
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .encode(static_cast<size_t>(0))
          .encode(get_n())
          .encode(get_e())
@@ -214,7 +214,7 @@ RSA_PrivateKey::RSA_PrivateKey(const AlgorithmIdentifier&,
    BigInt n, e, d, p, q, d1, d2, c;
 
    BER_Decoder(key_bits)
-      .start_cons(SEQUENCE)
+      .start_sequence()
          .decode_and_check<size_t>(0, "Unknown PKCS #1 key format version")
          .decode(n)
          .decode(e)
@@ -291,6 +291,10 @@ RSA_PrivateKey::RSA_PrivateKey(RandomNumberGenerator& rng,
       // TODO could generate primes in thread pool
       p = generate_rsa_prime(rng, rng, p_bits, e);
       q = generate_rsa_prime(rng, rng, q_bits, e);
+
+      if(p == q)
+         throw Internal_Error("RNG failure during RSA key generation");
+
       n = p * q;
       } while(n.bits() != bits);
 
@@ -309,6 +313,11 @@ RSA_PrivateKey::RSA_PrivateKey(RandomNumberGenerator& rng,
                         std::move(d1), std::move(d2), std::move(c));
    }
 
+std::unique_ptr<Public_Key> RSA_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new RSA_PublicKey(get_n(), get_e()));
+   }
+
 /*
 * Check Private RSA Parameters
 */
@@ -321,6 +330,9 @@ bool RSA_PrivateKey::check_key(RandomNumberGenerator& rng, bool strong) const
       return false;
 
    if(get_p() * get_q() != get_n())
+      return false;
+
+   if(get_p() == get_q())
       return false;
 
    if(get_d1() != ct_modulo(get_d(), get_p() - 1))
@@ -446,7 +458,7 @@ class RSA_Private_Operation
          */
 
          j1 = m_private->m_mod_p.multiply(m_private->m_mod_p.reduce((m_private->get_p() + j1) - j2), m_private->get_c());
-         return mul_add(j1, m_private->get_q(), j2);
+         return j1*m_private->get_q() + j2;
          }
 
       std::shared_ptr<const RSA_Public_Data> m_public;

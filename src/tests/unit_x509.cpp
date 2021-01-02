@@ -8,12 +8,13 @@
 #include "tests.h"
 
 #if defined(BOTAN_HAS_X509_CERTIFICATES)
-   #include <botan/calendar.h>
+   #include <botan/internal/calendar.h>
    #include <botan/pkcs10.h>
    #include <botan/pkcs8.h>
    #include <botan/x509self.h>
    #include <botan/x509path.h>
    #include <botan/x509_ca.h>
+   #include <botan/x509_ext.h>
    #include <botan/pk_algs.h>
    #include <botan/ber_dec.h>
    #include <botan/der_enc.h>
@@ -29,7 +30,7 @@ namespace {
 
 Botan::X509_Time from_date(const int y, const int m, const int d)
    {
-   const size_t this_year = Botan::calendar_value(std::chrono::system_clock::now()).get_year();
+   const size_t this_year = Botan::calendar_point(std::chrono::system_clock::now()).year();
 
    Botan::calendar_point t(static_cast<uint32_t>(this_year + y), m, d, 0, 0, 0);
    return Botan::X509_Time(t.to_std_timepoint());
@@ -636,8 +637,8 @@ Test::Result test_verify_gost2012_cert()
    // Throughout the test, some synonyms for EMSA4 are used, e.g. PSSR, EMSA-PSS
    Test::Result test_result("X509 Padding Config");
 
-   std::unique_ptr<Botan::Private_Key> sk(Botan::PKCS8::load_key(
-      Test::data_file("x509/misc/rsa_key.pem"), Test::rng()));
+   Botan::DataSource_Stream key_stream(Test::data_file("x509/misc/rsa_key.pem"));
+   std::unique_ptr<Botan::Private_Key> sk = Botan::PKCS8::load_key(key_stream);
 
    // Create X509 CA certificate; EMSA3 is used for signing by default
    Botan::X509_Cert_Options opt("TESTCA");
@@ -916,7 +917,7 @@ Test::Result test_x509_cert(const Botan::Private_Key& ca_key,
    store.add_crl(crl1);
 
    std::vector<Botan::CRL_Entry> revoked;
-   revoked.push_back(Botan::CRL_Entry(user1_cert, Botan::CESSATION_OF_OPERATION));
+   revoked.push_back(Botan::CRL_Entry(user1_cert, Botan::CRL_Code::CESSATION_OF_OPERATION));
    revoked.push_back(user2_cert);
 
    const Botan::X509_CRL crl2 = ca.update_crl(crl1, revoked, Test::rng());
@@ -933,7 +934,7 @@ Test::Result test_x509_cert(const Botan::Private_Key& ca_key,
    result.test_eq("user 1 revoked", result_u2.result_string(), revoked_str);
 
    revoked.clear();
-   revoked.push_back(Botan::CRL_Entry(user1_cert, Botan::REMOVE_FROM_CRL));
+   revoked.push_back(Botan::CRL_Entry(user1_cert, Botan::CRL_Code::REMOVE_FROM_CRL));
    Botan::X509_CRL crl3 = ca.update_crl(crl2, revoked, Test::rng());
 
    store.add_crl(crl3);
@@ -1352,19 +1353,17 @@ class String_Extension final : public Botan::Certificate_Extension
          return "String Extension";
          }
 
-      void contents_to(Botan::Data_Store&, Botan::Data_Store&) const override {}
-
       std::vector<uint8_t> encode_inner() const override
          {
          std::vector<uint8_t> bits;
-         Botan::DER_Encoder(bits).encode(Botan::ASN1_String(m_contents, Botan::UTF8_STRING));
+         Botan::DER_Encoder(bits).encode(Botan::ASN1_String(m_contents, Botan::ASN1_Tag::UTF8_STRING));
          return bits;
          }
 
       void decode_inner(const std::vector<uint8_t>& in) override
          {
          Botan::ASN1_String str;
-         Botan::BER_Decoder(in).decode(str, Botan::UTF8_STRING).verify_end();
+         Botan::BER_Decoder(in).decode(str, Botan::ASN1_Tag::UTF8_STRING).verify_end();
          m_contents = str.value();
          }
 
@@ -1392,8 +1391,8 @@ Test::Result test_custom_dn_attr(const Botan::Private_Key& ca_key,
 
    const Botan::OID attr1(Botan::OID("1.3.6.1.4.1.25258.9.1.1"));
    const Botan::OID attr2(Botan::OID("1.3.6.1.4.1.25258.9.1.2"));
-   const Botan::ASN1_String val1("Custom Attr 1", Botan::PRINTABLE_STRING);
-   const Botan::ASN1_String val2("12345", Botan::UTF8_STRING);
+   const Botan::ASN1_String val1("Custom Attr 1", Botan::ASN1_Tag::PRINTABLE_STRING);
+   const Botan::ASN1_String val2("12345", Botan::ASN1_Tag::UTF8_STRING);
 
    subject_dn.add_attribute(attr1, val1);
    subject_dn.add_attribute(attr2, val2);
@@ -1419,8 +1418,8 @@ Test::Result test_custom_dn_attr(const Botan::Private_Key& ca_key,
    result.confirm("Attr1 tag matches encoded", req_val1.tagging() == val1.tagging());
    result.confirm("Attr2 tag matches encoded", req_val2.tagging() == val2.tagging());
 
-   Botan::X509_Time not_before("100301123001Z", Botan::UTC_TIME);
-   Botan::X509_Time not_after("300301123001Z", Botan::UTC_TIME);
+   Botan::X509_Time not_before("100301123001Z", Botan::ASN1_Tag::UTC_TIME);
+   Botan::X509_Time not_after("300301123001Z", Botan::ASN1_Tag::UTC_TIME);
 
    auto cert = ca.sign_request(req, Test::rng(), not_before, not_after);
 
@@ -1732,7 +1731,7 @@ class X509_Cert_Unit_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("x509_unit", X509_Cert_Unit_Tests);
+BOTAN_REGISTER_TEST("x509", "x509_unit", X509_Cert_Unit_Tests);
 
 #endif
 

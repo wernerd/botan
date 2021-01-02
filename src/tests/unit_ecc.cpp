@@ -11,7 +11,7 @@
 #if defined(BOTAN_HAS_ECC_GROUP)
   #include <botan/bigint.h>
   #include <botan/numthry.h>
-  #include <botan/curve_nistp.h>
+  #include <botan/internal/curve_nistp.h>
   #include <botan/pk_keys.h>
   #include <botan/point_gfp.h>
   #include <botan/ec_group.h>
@@ -179,7 +179,7 @@ std::vector<Test::Result> ECC_Randomized_Tests::run()
    return results;
    }
 
-BOTAN_REGISTER_TEST("ecc_randomized", ECC_Randomized_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecc_randomized", ECC_Randomized_Tests);
 
 class NIST_Curve_Reduction_Tests final : public Test
    {
@@ -260,7 +260,7 @@ class NIST_Curve_Reduction_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("nist_redc", NIST_Curve_Reduction_Tests);
+BOTAN_REGISTER_TEST("pubkey", "nist_redc", NIST_Curve_Reduction_Tests);
 
 class EC_Group_Tests : public Test
    {
@@ -427,7 +427,7 @@ class EC_Group_Tests : public Test
 
    };
 
-BOTAN_REGISTER_TEST("ec_group", EC_Group_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ec_group", EC_Group_Tests);
 
 Test::Result test_decoding_with_seed()
    {
@@ -710,7 +710,7 @@ class ECC_Unit_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("ecc_unit", ECC_Unit_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecc_unit", ECC_Unit_Tests);
 
 #if defined(BOTAN_HAS_ECDSA)
 
@@ -746,7 +746,7 @@ class ECC_Invalid_Key_Tests final : public Text_Based_Test
          }
    };
 
-BOTAN_REGISTER_TEST("ecc_invalid", ECC_Invalid_Key_Tests);
+BOTAN_REGISTER_TEST("pubkey", "ecc_invalid", ECC_Invalid_Key_Tests);
 
 #endif
 

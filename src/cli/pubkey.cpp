@@ -19,7 +19,7 @@
 #include <botan/pk_algs.h>
 #include <botan/pkcs8.h>
 #include <botan/pubkey.h>
-#include <botan/workfactor.h>
+#include <botan/internal/workfactor.h>
 #include <botan/data_src.h>
 
 #include <fstream>
@@ -309,11 +309,11 @@ class PKCS8_Tool final : public Command
 
          if(pass_in.empty())
             {
-            key.reset(Botan::PKCS8::load_key(key_src, rng()));
+            key = Botan::PKCS8::load_key(key_src);
             }
          else
             {
-            key.reset(Botan::PKCS8::load_key(key_src, rng(), pass_in));
+            key = Botan::PKCS8::load_key(key_src, pass_in);
             }
 
          const std::chrono::milliseconds pbe_millis(get_arg_sz("pbe-millis"));
@@ -429,7 +429,7 @@ class DL_Group_Info final : public Command
 
          if(flag_set("pem"))
             {
-            output() << dl_group.PEM_encode(Botan::DL_Group::ANSI_X9_42_DH_PARAMETERS);
+            output() << dl_group.PEM_encode(Botan::DL_Group_Format::ANSI_X9_42_DH_PARAMETERS);
             }
          else
             {
@@ -478,7 +478,7 @@ BOTAN_REGISTER_COMMAND("pk_workfactor", PK_Workfactor);
 class Gen_DL_Group final : public Command
    {
    public:
-      Gen_DL_Group() : Command("gen_dl_group --pbits=1024 --qbits=0 --seed= --type=subgroup") {}
+      Gen_DL_Group() : Command("gen_dl_group --pbits=2048 --qbits=0 --seed= --type=subgroup") {}
 
       std::string group() const override
          {
@@ -503,14 +503,14 @@ class Gen_DL_Group final : public Command
             if(seed_str.size() > 0)
                { throw CLI_Usage_Error("Seed only supported for DSA param gen"); }
             Botan::DL_Group grp(rng(), Botan::DL_Group::Strong, pbits);
-            output() << grp.PEM_encode(Botan::DL_Group::ANSI_X9_42);
+            output() << grp.PEM_encode(Botan::DL_Group_Format::ANSI_X9_42);
             }
          else if(type == "subgroup")
             {
             if(seed_str.size() > 0)
                { throw CLI_Usage_Error("Seed only supported for DSA param gen"); }
             Botan::DL_Group grp(rng(), Botan::DL_Group::Prime_Subgroup, pbits, qbits);
-            output() << grp.PEM_encode(Botan::DL_Group::ANSI_X9_42);
+            output() << grp.PEM_encode(Botan::DL_Group_Format::ANSI_X9_42);
             }
          else if(type == "dsa")
             {
@@ -528,13 +528,13 @@ class Gen_DL_Group final : public Command
             if(seed_str.empty())
                {
                Botan::DL_Group grp(rng(), Botan::DL_Group::DSA_Kosherizer, pbits, dsa_qbits);
-               output() << grp.PEM_encode(Botan::DL_Group::ANSI_X9_42);
+               output() << grp.PEM_encode(Botan::DL_Group_Format::ANSI_X9_57);
                }
             else
                {
                const std::vector<uint8_t> seed = Botan::hex_decode(seed_str);
                Botan::DL_Group grp(rng(), seed, pbits, dsa_qbits);
-               output() << grp.PEM_encode(Botan::DL_Group::ANSI_X9_42);
+               output() << grp.PEM_encode(Botan::DL_Group_Format::ANSI_X9_57);
                }
 
             }

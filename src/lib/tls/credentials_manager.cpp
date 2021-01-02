@@ -6,6 +6,7 @@
 */
 
 #include <botan/credentials_manager.h>
+#include <botan/pkix_types.h>
 
 namespace Botan {
 
@@ -27,36 +28,6 @@ SymmetricKey Credentials_Manager::psk(const std::string&,
                                       const std::string& identity)
    {
    throw Internal_Error("No PSK set for identity " + identity);
-   }
-
-bool Credentials_Manager::attempt_srp(const std::string&,
-                                      const std::string&)
-   {
-   return false;
-   }
-
-std::string Credentials_Manager::srp_identifier(const std::string&,
-                                                const std::string&)
-   {
-   return "";
-   }
-
-std::string Credentials_Manager::srp_password(const std::string&,
-                                              const std::string&,
-                                              const std::string&)
-   {
-   return "";
-   }
-
-bool Credentials_Manager::srp_verifier(const std::string&,
-                                       const std::string&,
-                                       const std::string&,
-                                       std::string&,
-                                       BigInt&,
-                                       std::vector<uint8_t>&,
-                                       bool)
-   {
-   return false;
    }
 
 std::vector<X509_Certificate> Credentials_Manager::find_cert_chain(

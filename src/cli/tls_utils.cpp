@@ -11,7 +11,7 @@
 #include <botan/tls_policy.h>
 #include <botan/tls_version.h>
 #include <botan/tls_messages.h>
-#include <botan/loadstor.h>
+#include <botan/internal/loadstor.h>
 #include <botan/hex.h>
 #include <sstream>
 
@@ -67,7 +67,6 @@ class TLS_Ciphersuites final : public Command
          {
          const std::string policy_type = get_arg("policy");
          const Botan::TLS::Protocol_Version version(tls_version_from_str(get_arg("version")));
-         const bool with_srp = false; // fixme
 
          auto policy = load_tls_policy(policy_type);
 
@@ -77,7 +76,7 @@ class TLS_Ciphersuites final : public Command
             return;
             }
 
-         for(uint16_t suite_id : policy->ciphersuite_list(version, with_srp))
+         for(uint16_t suite_id : policy->ciphersuite_list(version))
             {
             const Botan::TLS::Ciphersuite suite(Botan::TLS::Ciphersuite::by_id(suite_id));
             output() << suite.to_string() << "\n";

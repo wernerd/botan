@@ -9,13 +9,18 @@
 #include <botan/eckcdsa.h>
 #include <botan/internal/pk_ops_impl.h>
 #include <botan/internal/point_mul.h>
-#include <botan/keypair.h>
+#include <botan/internal/keypair.h>
 #include <botan/reducer.h>
-#include <botan/emsa.h>
+#include <botan/internal/emsa.h>
 #include <botan/hash.h>
 #include <botan/rng.h>
 
 namespace Botan {
+
+std::unique_ptr<Public_Key> ECKCDSA_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new ECKCDSA_PublicKey(domain(), public_point()));
+   }
 
 bool ECKCDSA_PrivateKey::check_key(RandomNumberGenerator& rng,
                                  bool strong) const
@@ -172,6 +177,8 @@ bool ECKCDSA_Verification_Operation::verify(const uint8_t msg[], size_t,
    w = m_group.mod_order(w);
 
    const PointGFp q = m_gy_mul.multi_exp(w, s);
+   if(q.is_zero())
+      return false;
    const BigInt q_x = q.get_affine_x();
    secure_vector<uint8_t> c(q_x.bytes());
    q_x.binary_encode(c.data());

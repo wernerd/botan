@@ -13,15 +13,13 @@
 #include <botan/hash.h>
 #include <botan/mac.h>
 
-BOTAN_FUTURE_INTERNAL_HEADER(sp800_56a.h)
-
 namespace Botan {
 
 /**
  * NIST SP 800-56A KDF using hash function
  * @warning This KDF ignores the provided salt value
  */
-class BOTAN_PUBLIC_API(2,2) SP800_56A_Hash final : public KDF
+class SP800_56A_Hash final : public KDF
    {
    public:
       std::string name() const override { return "SP800-56A(" + m_hash->name() + ")"; }
@@ -45,10 +43,10 @@ class BOTAN_PUBLIC_API(2,2) SP800_56A_Hash final : public KDF
       *
       * @throws Invalid_Argument key_len > 2^32
       */
-      size_t kdf(uint8_t key[], size_t key_len,
-                 const uint8_t secret[], size_t secret_len,
-                 const uint8_t salt[], size_t salt_len,
-                 const uint8_t label[], size_t label_len) const override;
+      void kdf(uint8_t key[], size_t key_len,
+               const uint8_t secret[], size_t secret_len,
+               const uint8_t salt[], size_t salt_len,
+               const uint8_t label[], size_t label_len) const override;
 
       /**
       * @param hash the hash function to use as the auxiliary function
@@ -61,7 +59,7 @@ class BOTAN_PUBLIC_API(2,2) SP800_56A_Hash final : public KDF
 /**
  * NIST SP 800-56A KDF using HMAC
  */
-class BOTAN_PUBLIC_API(2,2) SP800_56A_HMAC final : public KDF
+class SP800_56A_HMAC final : public KDF
    {
    public:
       std::string name() const override { return "SP800-56A(" + m_mac->name() + ")"; }
@@ -85,10 +83,10 @@ class BOTAN_PUBLIC_API(2,2) SP800_56A_HMAC final : public KDF
       *
       * @throws Invalid_Argument key_len > 2^32 or MAC is not a HMAC
       */
-      size_t kdf(uint8_t key[], size_t key_len,
-                 const uint8_t secret[], size_t secret_len,
-                 const uint8_t salt[], size_t salt_len,
-                 const uint8_t label[], size_t label_len) const override;
+      void kdf(uint8_t key[], size_t key_len,
+               const uint8_t secret[], size_t secret_len,
+               const uint8_t salt[], size_t salt_len,
+               const uint8_t label[], size_t label_len) const override;
 
       /**
       * @param mac the HMAC to use as the auxiliary function

@@ -7,12 +7,17 @@
 */
 
 #include <botan/ecgdsa.h>
-#include <botan/keypair.h>
+#include <botan/internal/keypair.h>
 #include <botan/reducer.h>
 #include <botan/internal/pk_ops_impl.h>
 #include <botan/internal/point_mul.h>
 
 namespace Botan {
+
+std::unique_ptr<Public_Key> ECGDSA_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new ECGDSA_PublicKey(domain(), public_point()));
+   }
 
 bool ECGDSA_PrivateKey::check_key(RandomNumberGenerator& rng,
                                  bool strong) const

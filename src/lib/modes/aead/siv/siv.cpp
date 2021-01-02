@@ -6,11 +6,11 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/siv.h>
+#include <botan/internal/siv.h>
 #include <botan/block_cipher.h>
-#include <botan/cmac.h>
+#include <botan/internal/cmac.h>
 #include <botan/internal/poly_dbl.h>
-#include <botan/ctr.h>
+#include <botan/internal/ctr.h>
 
 namespace Botan {
 
@@ -78,9 +78,14 @@ void SIV_Mode::key_schedule(const uint8_t key[], size_t length)
    m_ad_macs.clear();
    }
 
+size_t SIV_Mode::maximum_associated_data_inputs() const
+   {
+   return block_size() * 8 - 2;
+   }
+
 void SIV_Mode::set_associated_data_n(size_t n, const uint8_t ad[], size_t length)
    {
-   const size_t max_ads = block_size() * 8 - 2;
+   const size_t max_ads = maximum_associated_data_inputs();
    if(n > max_ads)
       throw Invalid_Argument(name() + " allows no more than " + std::to_string(max_ads) + " ADs");
 

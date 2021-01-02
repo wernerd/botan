@@ -7,37 +7,37 @@
 
 #include <botan/mac.h>
 #include <botan/exceptn.h>
-#include <botan/scan_name.h>
+#include <botan/internal/scan_name.h>
 #include <botan/mem_ops.h>
 
-#if defined(BOTAN_HAS_CBC_MAC)
-  #include <botan/cbc_mac.h>
-#endif
-
 #if defined(BOTAN_HAS_CMAC)
-  #include <botan/cmac.h>
+  #include <botan/internal/cmac.h>
 #endif
 
 #if defined(BOTAN_HAS_GMAC)
-  #include <botan/gmac.h>
+  #include <botan/internal/gmac.h>
   #include <botan/block_cipher.h>
 #endif
 
 #if defined(BOTAN_HAS_HMAC)
-  #include <botan/hmac.h>
+  #include <botan/internal/hmac.h>
   #include <botan/hash.h>
 #endif
 
 #if defined(BOTAN_HAS_POLY1305)
-  #include <botan/poly1305.h>
+  #include <botan/internal/poly1305.h>
 #endif
 
 #if defined(BOTAN_HAS_SIPHASH)
-  #include <botan/siphash.h>
+  #include <botan/internal/siphash.h>
 #endif
 
 #if defined(BOTAN_HAS_ANSI_X919_MAC)
-  #include <botan/x919_mac.h>
+  #include <botan/internal/x919_mac.h>
+#endif
+
+#if defined(BOTAN_HAS_BLAKE2BMAC)
+  #include <botan/internal/blake2bmac.h>
 #endif
 
 namespace Botan {
@@ -47,6 +47,13 @@ MessageAuthenticationCode::create(const std::string& algo_spec,
                                   const std::string& provider)
    {
    const SCAN_Name req(algo_spec);
+
+#if defined(BOTAN_HAS_BLAKE2BMAC)
+   if(req.algo_name() == "Blake2b" || req.algo_name() == "BLAKE2b")
+   {
+       return std::unique_ptr<MessageAuthenticationCode>(new BLAKE2bMAC(req.arg_as_integer(0, 512)));
+   }
+#endif
 
 #if defined(BOTAN_HAS_GMAC)
    if(req.algo_name() == "GMAC" && req.arg_count() == 1)
@@ -102,17 +109,6 @@ MessageAuthenticationCode::create(const std::string& algo_spec,
       }
 #endif
 
-
-#if defined(BOTAN_HAS_CBC_MAC)
-   if(req.algo_name() == "CBC-MAC" && req.arg_count() == 1)
-      {
-      if(provider.empty() || provider == "base")
-         {
-         if(auto bc = BlockCipher::create(req.arg(0)))
-            return std::unique_ptr<MessageAuthenticationCode>(new CBC_MAC(bc.release()));
-         }
-      }
-#endif
 
 #if defined(BOTAN_HAS_ANSI_X919_MAC)
    if(req.algo_name() == "X9.19-MAC")

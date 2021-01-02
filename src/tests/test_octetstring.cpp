@@ -4,6 +4,8 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
+#define BOTAN_NO_DEPRECATED_WARNINGS
+
 #include "tests.h"
 
 #include <botan/symkey.h>
@@ -161,7 +163,7 @@ class OctetString_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("octetstring", OctetString_Tests);
+BOTAN_REGISTER_TEST("utils", "octetstring", OctetString_Tests);
 
 }
 

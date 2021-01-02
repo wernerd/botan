@@ -6,14 +6,13 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/asn1_alt_name.h>
+#include <botan/pkix_types.h>
 #include <botan/der_enc.h>
 #include <botan/ber_dec.h>
 #include <botan/oids.h>
 #include <botan/internal/stl_util.h>
-#include <botan/parsing.h>
-#include <botan/loadstor.h>
-#include <botan/x509_dn.h>
+#include <botan/internal/parsing.h>
+#include <botan/internal/loadstor.h>
 
 #include <sstream>
 
@@ -142,15 +141,15 @@ void encode_entries(DER_Encoder& encoder,
       {
       if(type == "RFC822" || type == "DNS" || type == "URI")
          {
-         ASN1_String asn1_string(i->second, IA5_STRING);
-         encoder.add_object(tagging, CONTEXT_SPECIFIC, asn1_string.value());
+         ASN1_String asn1_string(i->second, ASN1_Tag::IA5_STRING);
+         encoder.add_object(tagging, ASN1_Tag::CONTEXT_SPECIFIC, asn1_string.value());
          }
       else if(type == "IP")
          {
          const uint32_t ip = string_to_ipv4(i->second);
          uint8_t ip_buf[4] = { 0 };
          store_be(ip, ip_buf);
-         encoder.add_object(tagging, CONTEXT_SPECIFIC, ip_buf, 4);
+         encoder.add_object(tagging, ASN1_Tag::CONTEXT_SPECIFIC, ip_buf, 4);
          }
       else if (type == "DN")
          {
@@ -169,7 +168,7 @@ void encode_entries(DER_Encoder& encoder,
 */
 void AlternativeName::encode_into(DER_Encoder& der) const
    {
-   der.start_cons(SEQUENCE);
+   der.start_sequence();
 
    encode_entries(der, m_alt_info, "RFC822", ASN1_Tag(1));
    encode_entries(der, m_alt_info, "DNS", ASN1_Tag(2));
@@ -195,7 +194,7 @@ void AlternativeName::encode_into(DER_Encoder& der) const
 */
 void AlternativeName::decode_from(BER_Decoder& source)
    {
-   BER_Decoder names = source.start_cons(SEQUENCE);
+   BER_Decoder names = source.start_sequence();
 
    // FIXME this is largely a duplication of GeneralName::decode_from
 
@@ -203,7 +202,7 @@ void AlternativeName::decode_from(BER_Decoder& source)
       {
       BER_Object obj = names.get_next_object();
 
-      if(obj.is_a(0, CONTEXT_SPECIFIC))
+      if(obj.is_a(0, ASN1_Tag::CONTEXT_SPECIFIC))
          {
          BER_Decoder othername(obj);
 
@@ -214,7 +213,7 @@ void AlternativeName::decode_from(BER_Decoder& source)
             BER_Object othername_value_outer = othername.get_next_object();
             othername.verify_end();
 
-            if(othername_value_outer.is_a(0, ASN1_Tag(CONTEXT_SPECIFIC | CONSTRUCTED)) == false)
+            if(othername_value_outer.is_a(0, ASN1_Tag::PRIVATE) == false)
                throw Decoding_Error("Invalid tags on otherName value");
 
             BER_Decoder othername_value_inner(othername_value_outer);
@@ -222,25 +221,25 @@ void AlternativeName::decode_from(BER_Decoder& source)
             BER_Object value = othername_value_inner.get_next_object();
             othername_value_inner.verify_end();
 
-            if(ASN1_String::is_string_type(value.type()) && value.get_class() == UNIVERSAL)
+            if(ASN1_String::is_string_type(value.type()) && value.get_class() == ASN1_Tag::UNIVERSAL)
                {
                add_othername(oid, ASN1::to_string(value), value.type());
                }
             }
          }
-      if(obj.is_a(1, CONTEXT_SPECIFIC))
+      if(obj.is_a(1, ASN1_Tag::CONTEXT_SPECIFIC))
          {
          add_attribute("RFC822", ASN1::to_string(obj));
          }
-      else if(obj.is_a(2, CONTEXT_SPECIFIC))
+      else if(obj.is_a(2, ASN1_Tag::CONTEXT_SPECIFIC))
          {
          add_attribute("DNS", ASN1::to_string(obj));
          }
-      else if(obj.is_a(6, CONTEXT_SPECIFIC))
+      else if(obj.is_a(6, ASN1_Tag::CONTEXT_SPECIFIC))
          {
          add_attribute("URI", ASN1::to_string(obj));
          }
-      else if(obj.is_a(4, ASN1_Tag(CONTEXT_SPECIFIC | CONSTRUCTED)))
+      else if(obj.is_a(4, ASN1_Tag::CONTEXT_SPECIFIC | ASN1_Tag::CONSTRUCTED))
          {
          BER_Decoder dec(obj);
          X509_DN dn;
@@ -251,7 +250,7 @@ void AlternativeName::decode_from(BER_Decoder& source)
 
          add_attribute("DN", ss.str());
          }
-      else if(obj.is_a(7, CONTEXT_SPECIFIC))
+      else if(obj.is_a(7, ASN1_Tag::CONTEXT_SPECIFIC))
          {
          if(obj.length() == 4)
             {

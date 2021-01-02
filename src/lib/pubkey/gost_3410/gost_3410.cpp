@@ -36,7 +36,7 @@ std::vector<uint8_t> GOST_3410_PublicKey::public_key_bits() const
       }
 
    std::vector<uint8_t> output;
-   DER_Encoder(output).encode(bits, OCTET_STRING);
+   DER_Encoder(output).encode(bits, ASN1_Tag::OCTET_STRING);
    return output;
    }
 
@@ -57,7 +57,7 @@ AlgorithmIdentifier GOST_3410_PublicKey::algorithm_identifier() const
    const OID gost_oid = get_oid();
    const OID domain_oid = domain().get_curve_oid();
 
-   DER_Encoder(params).start_cons(SEQUENCE).encode(domain_oid).end_cons();
+   DER_Encoder(params).start_sequence().encode(domain_oid).end_cons();
 
    return AlgorithmIdentifier(gost_oid, params);
    }
@@ -68,7 +68,7 @@ GOST_3410_PublicKey::GOST_3410_PublicKey(const AlgorithmIdentifier& alg_id,
    OID ecc_param_id;
 
    // The parameters also includes hash and cipher OIDs
-   BER_Decoder(alg_id.get_parameters()).start_cons(SEQUENCE).decode(ecc_param_id);
+   BER_Decoder(alg_id.get_parameters()).start_sequence().decode(ecc_param_id);
 
    m_domain_params = EC_Group(ecc_param_id);
 
@@ -78,7 +78,7 @@ GOST_3410_PublicKey::GOST_3410_PublicKey(const AlgorithmIdentifier& alg_id,
                            std::to_string(p_bits));
 
    secure_vector<uint8_t> bits;
-   BER_Decoder(key_bits).decode(bits, OCTET_STRING);
+   BER_Decoder(key_bits).decode(bits, ASN1_Tag::OCTET_STRING);
 
    const size_t part_size = bits.size() / 2;
 
@@ -107,6 +107,11 @@ GOST_3410_PrivateKey::GOST_3410_PrivateKey(RandomNumberGenerator& rng,
    if(p_bits != 256 && p_bits != 512)
       throw Decoding_Error("GOST-34.10-2012 is not defined for parameters of size " +
                            std::to_string(p_bits));
+   }
+
+std::unique_ptr<Public_Key> GOST_3410_PrivateKey::public_key() const
+   {
+   return std::unique_ptr<Public_Key>(new GOST_3410_PublicKey(domain(), public_point()));
    }
 
 namespace {

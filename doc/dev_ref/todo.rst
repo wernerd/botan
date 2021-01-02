@@ -7,27 +7,31 @@ ticket on GitHub to make sure you're on the right track.
 
 Request a new feature by opening a pull request to update this file.
 
-Ciphers, Hashes, PBKDF
+New Ciphers/Hashes/MACs
+----------------------------------------
+* GCM-SIV (RFC 8452)
+* EME* tweakable block cipher (https://eprint.iacr.org/2004/125)
+* PMAC
+* SIV-PMAC
+* Threefish-1024
+* Skein-MAC
+* FFX format preserving encryption (NIST 800-38G)
+* Adiantum (https://eprint.iacr.org/2018/720)
+
+Improved Ciphers Implementations
 ----------------------------------------
 
 * Stiched AES/GCM mode for CPUs supporting both AES and CLMUL
 * Combine AES-NI, ARMv8 and POWER AES implementations (as already done for CLMUL)
+* Support for VAES (Zen3/Ice Lake)
 * Vector permute AES only supports little-endian systems; fix for big-endian
 * SM4 using AES-NI (https://github.com/mjosaarinen/sm4ni) or vector permute
 * Poly1305 using AVX2
 * ChaCha using SSSE3
-* Skein-MAC
-* PMAC
-* SIV-PMAC
-* GCM-SIV (RFC 8452)
-* EME* tweakable block cipher (https://eprint.iacr.org/2004/125)
-* FFX format preserving encryption (NIST 800-38G)
+* Threefish-512 AVX2 would be improved by doing 4-wide execution
 * SHA-512 using BMI2+AVX2
-* Constant time DES using bitslicing and/or BMI2
-* Threefish-1024
+* Constant time DES using bitslicing
 * SIMD evaluation of SHA-2 and SHA-3 compression functions
-* Adiantum (https://eprint.iacr.org/2018/720)
-* CRC using clmul/pmull
 
 Public Key Crypto, Math
 ----------------------------------------
@@ -124,7 +128,6 @@ New Protocols / Formats
 Cleanups
 -----------
 
-* Split test_ffi.cpp into multiple files
 * Unicode path support on Windows (GH #1615)
 * The X.509 path validation tests have much duplicated logic
 
@@ -147,20 +150,10 @@ New C APIs
 * DL_Group
 * EC_Group
 
-Python
-----------------
-
-* Anywhere Pylint warnings too-many-locals, too-many-branches, or
-  too-many-statements are skipped, fix the code so Pylint no longer warns.
-
-* Write a CLI or HTTPS client in Python
-
 Build/Test
 ----------------------------------------
 
-* Start using GitHub Actions for CI, especially Windows builds
-* Create Docker image for Travis that runs 18.04 and has all
-  the tools we need pre-installed.
+* Explore using GitHub Actions for Windows builds
 * Code signing for Windows installers
 * Test runner python script that captures backtraces and other
   debug info during CI
@@ -190,6 +183,7 @@ CLI
 * Implementation of `tlsdate`
 * Password store utility
 * TOTP calculator
+* Clone of magic wormhole
 
 Documentation
 ----------------------------------------

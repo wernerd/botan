@@ -11,24 +11,22 @@
 #include <botan/kdf.h>
 #include <botan/mac.h>
 
-BOTAN_FUTURE_INTERNAL_HEADER(prf_tls.h)
-
 namespace Botan {
 
 /**
 * PRF used in TLS 1.0/1.1
 */
-class BOTAN_PUBLIC_API(2,0) TLS_PRF final : public KDF
+class TLS_PRF final : public KDF
    {
    public:
       std::string name() const override { return "TLS-PRF"; }
 
       KDF* clone() const override { return new TLS_PRF; }
 
-      size_t kdf(uint8_t key[], size_t key_len,
-                 const uint8_t secret[], size_t secret_len,
-                 const uint8_t salt[], size_t salt_len,
-                 const uint8_t label[], size_t label_len) const override;
+      void kdf(uint8_t key[], size_t key_len,
+               const uint8_t secret[], size_t secret_len,
+               const uint8_t salt[], size_t salt_len,
+               const uint8_t label[], size_t label_len) const override;
 
       TLS_PRF(std::unique_ptr<MessageAuthenticationCode> hmac_md5,
               std::unique_ptr<MessageAuthenticationCode> hmac_sha1) :
@@ -45,17 +43,17 @@ class BOTAN_PUBLIC_API(2,0) TLS_PRF final : public KDF
 /**
 * PRF used in TLS 1.2
 */
-class BOTAN_PUBLIC_API(2,0) TLS_12_PRF final : public KDF
+class TLS_12_PRF final : public KDF
    {
    public:
       std::string name() const override { return "TLS-12-PRF(" + m_mac->name() + ")"; }
 
       KDF* clone() const override { return new TLS_12_PRF(m_mac->clone()); }
 
-      size_t kdf(uint8_t key[], size_t key_len,
-                 const uint8_t secret[], size_t secret_len,
-                 const uint8_t salt[], size_t salt_len,
-                 const uint8_t label[], size_t label_len) const override;
+      void kdf(uint8_t key[], size_t key_len,
+               const uint8_t secret[], size_t secret_len,
+               const uint8_t salt[], size_t salt_len,
+               const uint8_t label[], size_t label_len) const override;
 
       /**
       * @param mac MAC algorithm to use

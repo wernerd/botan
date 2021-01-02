@@ -55,11 +55,16 @@ class BOTAN_PUBLIC_API(2,0) Policy
 
       /**
       * Returns a list of signature algorithms we are willing to
-      * use, in order of preference. Allowed values RSA and DSA.
+      * use, in order of preference.
       */
       virtual std::vector<std::string> allowed_signature_methods() const;
 
       virtual std::vector<Signature_Scheme> allowed_signature_schemes() const;
+
+      /**
+      * Return a list of schemes we are willing to accept
+      */
+      virtual std::vector<Signature_Scheme> acceptable_signature_schemes() const;
 
       /**
       * The minimum signature strength we will accept
@@ -196,11 +201,6 @@ class BOTAN_PUBLIC_API(2,0) Policy
       virtual size_t minimum_rsa_bits() const;
 
       /**
-      * Minimum DSA group size, default 2048 bits
-      */
-      virtual size_t minimum_dsa_group_size() const;
-
-      /**
       * Throw an exception if you don't like the peer's key.
       * Default impl checks the key size against minimum_rsa_bits, minimum_ecdsa_group_size,
       * or minimum_ecdh_group_size depending on the key's type.
@@ -210,7 +210,7 @@ class BOTAN_PUBLIC_API(2,0) Policy
       virtual void check_peer_key_acceptable(const Public_Key& public_key) const;
 
       /**
-      * If this function returns false, unknown SRP/PSK identifiers
+      * If this function returns false, unknown PSK identifiers
       * will be rejected with an unknown_psk_identifier alert as soon
       * as the non-existence is identified. Otherwise, a false
       * identifier value will be used and the protocol allowed to
@@ -300,8 +300,7 @@ class BOTAN_PUBLIC_API(2,0) Policy
       /**
       * Return allowed ciphersuites, in order of preference
       */
-      virtual std::vector<uint16_t> ciphersuite_list(Protocol_Version version,
-                                                     bool have_srp) const;
+      virtual std::vector<uint16_t> ciphersuite_list(Protocol_Version version) const;
 
       /**
       * @return the default MTU for DTLS
@@ -435,7 +434,7 @@ class BOTAN_PUBLIC_API(2,0) BSI_TR_02102_2 : public Policy
 
       std::vector<std::string> allowed_key_exchange_methods() const override
          {
-         return std::vector<std::string>({"ECDH", "DH", "ECDHE_PSK", "DHE_PSK"});
+         return std::vector<std::string>({"ECDH", "DH", "ECDHE_PSK" });
          }
 
       std::vector<std::string> allowed_signature_methods() const override
@@ -464,7 +463,6 @@ class BOTAN_PUBLIC_API(2,0) BSI_TR_02102_2 : public Policy
 
       size_t minimum_rsa_bits() const override { return 2000; }
       size_t minimum_dh_group_size() const override { return 2000; }
-      size_t minimum_dsa_group_size() const override { return 2000; }
 
       size_t minimum_ecdh_group_size() const override { return 250; }
       size_t minimum_ecdsa_group_size() const override { return 250; }

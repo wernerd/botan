@@ -27,17 +27,17 @@ If you think you have found a security issue, see the `security page
 <https://botan.randombit.net/security.html>`_ for contact information.
 
 The latest release is
-`2.15.0 <https://botan.randombit.net/releases/Botan-2.15.0.tar.xz>`_
-`(sig) <https://botan.randombit.net/releases/Botan-2.15.0.tar.xz.asc>`_,
-released on 2020-07-07.
+`2.17.3 <https://botan.randombit.net/releases/Botan-2.17.3.tar.xz>`_
+`(sig) <https://botan.randombit.net/releases/Botan-2.17.3.tar.xz.asc>`_,
+released on 2020-12-21.
 All releases are signed with a `PGP key <https://botan.randombit.net/pgpkey.txt>`_.
 See the `release notes <https://botan.randombit.net/news.html>`_ for
 what is new. Botan is also available through most
 `distributions <https://github.com/randombit/botan/wiki/Distros>`_
 such as Fedora, Debian, Arch and Homebrew.
 
-.. image:: https://travis-ci.org/randombit/botan.svg?branch=master
-    :target: https://travis-ci.org/randombit/botan
+.. image:: https://api.travis-ci.com/randombit/botan.svg?branch=master
+    :target: https://travis-ci.com/github/randombit/botan
     :alt: Travis CI status
 
 .. image:: https://ci.appveyor.com/api/projects/status/n9f94dljd03j2lce/branch/master?svg=true
@@ -78,7 +78,7 @@ Transport Layer Security (TLS) Protocol
 * DTLS v1.0 and v1.2 are adaptations of TLS to datagram operation.
 * Supported extensions include session tickets, SNI, ALPN, OCSP stapling,
   encrypt-then-mac CBC, and extended master secret.
-* Supports authentication using preshared keys (PSK) or passwords (SRP)
+* Supports authentication using certificates or preshared keys (PSK)
 * Supports record encryption with ChaCha20Poly1305, AES/OCB, AES/GCM, AES/CCM,
   Camellia/GCM as well as legacy CBC ciphersuites.
 * Key exchange using CECPQ1, ECDH, FFDHE, or RSA
@@ -110,9 +110,9 @@ Ciphers, hashes, MACs, and checksums
 * Authenticated cipher modes EAX, OCB, GCM, SIV, CCM, (X)ChaCha20Poly1305
 * Cipher modes CTR, CBC, XTS, CFB, OFB
 * Block ciphers AES, ARIA, Blowfish, Camellia, CAST-128, DES/3DES, IDEA,
-  Lion, Noekeon, SEED, Serpent, SHACAL2, SM4, Threefish-512, Twofish
+  Lion, SEED, Serpent, SHACAL2, SM4, Threefish-512, Twofish
 * Stream ciphers (X)ChaCha20, (X)Salsa20, SHAKE-128, RC4
-* Hash functions SHA-1, SHA-2, SHA-3, MD4, MD5, RIPEMD-160, BLAKE2b,
+* Hash functions SHA-1, SHA-2, SHA-3, MD5, RIPEMD-160, BLAKE2b,
   Skein-512, SM3, Streebog, Whirlpool
 * Authentication codes HMAC, CMAC, Poly1305, SipHash, GMAC, X9.19 DES-MAC
 * Non-cryptographic checksums Adler32, CRC24, CRC32

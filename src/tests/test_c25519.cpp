@@ -39,7 +39,7 @@ class Curve25519_Sclarmult_Tests final : public Text_Based_Test
          return result;
          }
    };
-BOTAN_REGISTER_TEST("curve25519_scalar", Curve25519_Sclarmult_Tests);
+BOTAN_REGISTER_TEST("pubkey", "curve25519_scalar", Curve25519_Sclarmult_Tests);
 
 class Curve25519_Agreement_Tests final : public PK_Key_Agreement_Test
    {
@@ -67,7 +67,7 @@ class Curve25519_Agreement_Tests final : public PK_Key_Agreement_Test
          return vars.get_req_bin("CounterKey");
          }
    };
-BOTAN_REGISTER_TEST("curve25519_agreement", Curve25519_Agreement_Tests);
+BOTAN_REGISTER_TEST("pubkey", "curve25519_agreement", Curve25519_Agreement_Tests);
 
 class Curve25519_Roundtrip_Test final : public Test
    {
@@ -96,8 +96,8 @@ class Curve25519_Roundtrip_Test final : public Test
             Botan::DataSource_Memory a_priv_ds(a_priv_pem);
             Botan::DataSource_Memory b_priv_ds(b_priv_pem);
 
-            std::unique_ptr<Botan::Private_Key> a_priv(Botan::PKCS8::load_key(a_priv_ds, Test::rng(), [a_pass]() { return a_pass; }));
-            std::unique_ptr<Botan::Private_Key> b_priv(Botan::PKCS8::load_key(b_priv_ds, Test::rng(), b_pass));
+            std::unique_ptr<Botan::Private_Key> a_priv = Botan::PKCS8::load_key(a_priv_ds, [a_pass]() { return a_pass; });
+            std::unique_ptr<Botan::Private_Key> b_priv = Botan::PKCS8::load_key(b_priv_ds, b_pass);
 #else
             const std::string a_priv_pem = Botan::PKCS8::PEM_encode(a_priv_gen);
             const std::string b_priv_pem = Botan::PKCS8::PEM_encode(b_priv_gen);
@@ -106,8 +106,8 @@ class Curve25519_Roundtrip_Test final : public Test
             Botan::DataSource_Memory a_priv_ds(a_priv_pem);
             Botan::DataSource_Memory b_priv_ds(b_priv_pem);
 
-            std::unique_ptr<Botan::Private_Key> a_priv(Botan::PKCS8::load_key(a_priv_ds, Test::rng()));
-            std::unique_ptr<Botan::Private_Key> b_priv(Botan::PKCS8::load_key(b_priv_ds, Test::rng()));
+            std::unique_ptr<Botan::Private_Key> a_priv = Botan::PKCS8::load_key(a_priv_ds);
+            std::unique_ptr<Botan::Private_Key> b_priv = Botan::PKCS8::load_key(b_priv_ds);
 #endif
 
             // Export public keys as PEM
@@ -150,7 +150,7 @@ class Curve25519_Roundtrip_Test final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("curve25519_rt", Curve25519_Roundtrip_Test);
+BOTAN_REGISTER_TEST("pubkey", "curve25519_rt", Curve25519_Roundtrip_Test);
 
 class Curve25519_Keygen_Tests final : public PK_Key_Generation_Test
    {
@@ -165,7 +165,7 @@ class Curve25519_Keygen_Tests final : public PK_Key_Generation_Test
          }
    };
 
-BOTAN_REGISTER_TEST("curve25519_keygen", Curve25519_Keygen_Tests);
+BOTAN_REGISTER_TEST("pubkey", "curve25519_keygen", Curve25519_Keygen_Tests);
 
 #endif
 

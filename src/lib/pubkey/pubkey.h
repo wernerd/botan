@@ -13,11 +13,6 @@
 #include <botan/symkey.h>
 #include <string>
 
-#if defined(BOTAN_HAS_SYSTEM_RNG)
-  #include <botan/system_rng.h>
-  #define BOTAN_PUBKEY_INCLUDE_DEPRECATED_CONSTRUCTORS
-#endif
-
 namespace Botan {
 
 class RandomNumberGenerator;
@@ -71,7 +66,9 @@ class BOTAN_PUBLIC_API(2,0) PK_Encryptor
       virtual ~PK_Encryptor() = default;
 
       PK_Encryptor(const PK_Encryptor&) = delete;
+      PK_Encryptor(PK_Encryptor&&) = delete;
       PK_Encryptor& operator=(const PK_Encryptor&) = delete;
+      PK_Encryptor& operator=(PK_Encryptor&&) = delete;
 
    private:
       virtual std::vector<uint8_t> enc(const uint8_t[], size_t,
@@ -151,7 +148,9 @@ class BOTAN_PUBLIC_API(2,0) PK_Decryptor
       virtual ~PK_Decryptor() = default;
 
       PK_Decryptor(const PK_Decryptor&) = delete;
+      PK_Decryptor(PK_Decryptor&&) = delete;
       PK_Decryptor& operator=(const PK_Decryptor&) = delete;
+      PK_Decryptor& operator=(PK_Decryptor&&) = delete;
 
    private:
       virtual secure_vector<uint8_t> do_decrypt(uint8_t& valid_mask,
@@ -182,27 +181,12 @@ class BOTAN_PUBLIC_API(2,0) PK_Signer final
                 Signature_Format format = IEEE_1363,
                 const std::string& provider = "");
 
-#if defined(BOTAN_PUBKEY_INCLUDE_DEPRECATED_CONSTRUCTORS)
-      /**
-      * Construct a PK Signer.
-      * @param key the key to use inside this signer
-      * @param emsa the EMSA to use
-      * An example would be "EMSA1(SHA-224)".
-      * @param format the signature format to use
-      */
-      BOTAN_DEPRECATED("Use constructor taking a RNG object")
-      PK_Signer(const Private_Key& key,
-                const std::string& emsa,
-                Signature_Format format = IEEE_1363,
-                const std::string& provider = "") :
-         PK_Signer(key, system_rng(), emsa, format, provider)
-         {}
-#endif
-
       ~PK_Signer();
 
       PK_Signer(const PK_Signer&) = delete;
+      PK_Signer(PK_Signer&&) = delete;
       PK_Signer& operator=(const PK_Signer&) = delete;
+      PK_Signer& operator=(PK_Signer&&) = delete;
 
       /**
       * Sign a message all in one go
@@ -312,8 +296,10 @@ class BOTAN_PUBLIC_API(2,0) PK_Verifier final
 
       ~PK_Verifier();
 
-      PK_Verifier& operator=(const PK_Verifier&) = delete;
       PK_Verifier(const PK_Verifier&) = delete;
+      PK_Verifier(PK_Verifier&&) = delete;
+      PK_Verifier& operator=(const PK_Verifier&) = delete;
+      PK_Verifier& operator=(PK_Verifier&&) = delete;
 
       /**
       * Verify a signature.
@@ -426,29 +412,14 @@ class BOTAN_PUBLIC_API(2,0) PK_Key_Agreement final
                        const std::string& kdf,
                        const std::string& provider = "");
 
-#if defined(BOTAN_PUBKEY_INCLUDE_DEPRECATED_CONSTRUCTORS)
-      /**
-      * Construct a PK Key Agreement.
-      * @param key the key to use
-      * @param kdf name of the KDF to use (or 'Raw' for no KDF)
-      * @param provider the algo provider to use (or empty for default)
-      */
-      BOTAN_DEPRECATED("Use constructor taking a RNG object")
-      PK_Key_Agreement(const Private_Key& key,
-                       const std::string& kdf,
-                       const std::string& provider = "") :
-         PK_Key_Agreement(key, system_rng(), kdf, provider)
-         {}
-#endif
-
       ~PK_Key_Agreement();
 
-      // For ECIES
-      PK_Key_Agreement& operator=(PK_Key_Agreement&&);
-      PK_Key_Agreement(PK_Key_Agreement&&);
-
-      PK_Key_Agreement& operator=(const PK_Key_Agreement&) = delete;
       PK_Key_Agreement(const PK_Key_Agreement&) = delete;
+      PK_Key_Agreement& operator=(const PK_Key_Agreement&) = delete;
+      PK_Key_Agreement& operator=(PK_Key_Agreement&&) = delete;
+
+      // For ECIES
+      PK_Key_Agreement(PK_Key_Agreement&&);
 
       /**
       * Perform Key Agreement Operation
@@ -543,23 +514,12 @@ class BOTAN_PUBLIC_API(2,0) PK_Encryptor_EME final : public PK_Encryptor
                        const std::string& padding,
                        const std::string& provider = "");
 
-#if defined(BOTAN_PUBKEY_INCLUDE_DEPRECATED_CONSTRUCTORS)
-      /**
-      * Construct an instance.
-      * @param key the key to use inside the encryptor
-      * @param padding the message encoding scheme to use (eg "OAEP(SHA-256)")
-      */
-      BOTAN_DEPRECATED("Use constructor taking a RNG object")
-      PK_Encryptor_EME(const Public_Key& key,
-                       const std::string& padding,
-                       const std::string& provider = "") :
-         PK_Encryptor_EME(key, system_rng(), padding, provider) {}
-#endif
-
       ~PK_Encryptor_EME();
 
-      PK_Encryptor_EME& operator=(const PK_Encryptor_EME&) = delete;
       PK_Encryptor_EME(const PK_Encryptor_EME&) = delete;
+      PK_Encryptor_EME(PK_Encryptor_EME&&) = delete;
+      PK_Encryptor_EME& operator=(const PK_Encryptor_EME&) = delete;
+      PK_Encryptor_EME& operator=(PK_Encryptor_EME&&) = delete;
 
       /**
       * Return an upper bound on the ciphertext length for a particular
@@ -591,25 +551,13 @@ class BOTAN_PUBLIC_API(2,0) PK_Decryptor_EME final : public PK_Decryptor
                        const std::string& eme,
                        const std::string& provider = "");
 
-
-#if defined(BOTAN_PUBKEY_INCLUDE_DEPRECATED_CONSTRUCTORS)
-      /**
-      * Construct an instance.
-      * @param key the key to use inside the decryptor
-      * @param eme the message encoding scheme to use (eg "OAEP(SHA-256)")
-      */
-      BOTAN_DEPRECATED("Use constructor taking a RNG object")
-      PK_Decryptor_EME(const Private_Key& key,
-                       const std::string& eme,
-                       const std::string& provider = "") :
-         PK_Decryptor_EME(key, system_rng(), eme, provider) {}
-#endif
-
       size_t plaintext_length(size_t ptext_len) const override;
 
       ~PK_Decryptor_EME();
-      PK_Decryptor_EME& operator=(const PK_Decryptor_EME&) = delete;
       PK_Decryptor_EME(const PK_Decryptor_EME&) = delete;
+      PK_Decryptor_EME(PK_Decryptor_EME&&) = delete;
+      PK_Decryptor_EME& operator=(const PK_Decryptor_EME&) = delete;
+      PK_Decryptor_EME& operator=(PK_Decryptor_EME&&) = delete;
    private:
       secure_vector<uint8_t> do_decrypt(uint8_t& valid_mask,
                                      const uint8_t in[],
@@ -636,18 +584,12 @@ class BOTAN_PUBLIC_API(2,0) PK_KEM_Encryptor final
                        const std::string& kem_param = "",
                        const std::string& provider = "");
 
-#if defined(BOTAN_PUBKEY_INCLUDE_DEPRECATED_CONSTRUCTORS)
-      BOTAN_DEPRECATED("Use constructor taking a RNG object")
-      PK_KEM_Encryptor(const Public_Key& key,
-                       const std::string& kem_param = "",
-                       const std::string& provider = "") :
-         PK_KEM_Encryptor(key, system_rng(), kem_param, provider) {}
-#endif
-
       ~PK_KEM_Encryptor();
 
-      PK_KEM_Encryptor& operator=(const PK_KEM_Encryptor&) = delete;
       PK_KEM_Encryptor(const PK_KEM_Encryptor&) = delete;
+      PK_KEM_Encryptor(PK_KEM_Encryptor&&) = delete;
+      PK_KEM_Encryptor& operator=(const PK_KEM_Encryptor&) = delete;
+      PK_KEM_Encryptor& operator=(PK_KEM_Encryptor&&) = delete;
 
       /**
       * Generate a shared key for data encryption.
@@ -730,18 +672,11 @@ class BOTAN_PUBLIC_API(2,0) PK_KEM_Decryptor final
                        const std::string& kem_param = "",
                        const std::string& provider = "");
 
-#if defined(BOTAN_PUBKEY_INCLUDE_DEPRECATED_CONSTRUCTORS)
-      BOTAN_DEPRECATED("Use constructor taking a RNG object")
-      PK_KEM_Decryptor(const Private_Key& key,
-                       const std::string& kem_param = "",
-                       const std::string& provider = "") :
-         PK_KEM_Decryptor(key, system_rng(), kem_param, provider)
-         {}
-#endif
-
       ~PK_KEM_Decryptor();
-      PK_KEM_Decryptor& operator=(const PK_KEM_Decryptor&) = delete;
       PK_KEM_Decryptor(const PK_KEM_Decryptor&) = delete;
+      PK_KEM_Decryptor(PK_KEM_Decryptor&&) = delete;
+      PK_KEM_Decryptor& operator=(const PK_KEM_Decryptor&) = delete;
+      PK_KEM_Decryptor& operator=(PK_KEM_Decryptor&&) = delete;
 
       /**
       * Decrypts the shared key for data encryption.
