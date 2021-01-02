@@ -11,7 +11,6 @@
    #include <botan/x509path.h>
    #include <botan/certstor.h>
    #include <botan/calendar.h>
-   #include <botan/cert_status.h>
    #include <fstream>
 #endif
 
@@ -370,7 +369,7 @@ class OCSP_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("ocsp", OCSP_Tests);
+BOTAN_REGISTER_TEST("x509", "ocsp", OCSP_Tests);
 
 #endif
 

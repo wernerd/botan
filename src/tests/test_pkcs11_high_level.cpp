@@ -17,9 +17,6 @@
 
 #if defined(BOTAN_HAS_PKCS11)
    #include <botan/p11.h>
-   #include <botan/p11_slot.h>
-   #include <botan/p11_session.h>
-   #include <botan/p11_module.h>
    #include <botan/p11_object.h>
    #include <botan/p11_randomgenerator.h>
 #endif
@@ -53,7 +50,7 @@
 
 #if defined(BOTAN_HAS_X509_CERTIFICATES) && defined(BOTAN_HAS_PKCS11)
    #include <botan/p11_x509.h>
-   #include <botan/x509_dn.h>
+   #include <botan/pkix_types.h>
 #endif
 
 #if defined(BOTAN_HAS_HMAC_DRBG)
@@ -203,7 +200,7 @@ class Module_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-module", Module_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-module", Module_Tests);
 
 /***************************** Slot *****************************/
 
@@ -342,7 +339,7 @@ class Slot_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-slot", Slot_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-slot", Slot_Tests);
 
 /***************************** Session *****************************/
 
@@ -474,7 +471,7 @@ class Session_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-session", Session_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-session", Session_Tests);
 
 /***************************** Object *****************************/
 
@@ -648,7 +645,7 @@ class Object_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-object", Object_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-object", Object_Tests);
 
 /***************************** PKCS11 RSA *****************************/
 
@@ -908,7 +905,7 @@ class PKCS11_RSA_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-rsa", PKCS11_RSA_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-rsa", PKCS11_RSA_Tests);
 #endif
 
 /***************************** PKCS11 ECDSA *****************************/
@@ -1204,7 +1201,7 @@ class PKCS11_ECDSA_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-ecdsa", PKCS11_ECDSA_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-ecdsa", PKCS11_ECDSA_Tests);
 
 #endif
 
@@ -1430,7 +1427,7 @@ class PKCS11_ECDH_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-ecdh", PKCS11_ECDH_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-ecdh", PKCS11_ECDH_Tests);
 
 #endif
 
@@ -1516,7 +1513,7 @@ class PKCS11_RNG_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-rng", PKCS11_RNG_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-rng", PKCS11_RNG_Tests);
 
 /***************************** PKCS11 token management *****************************/
 
@@ -1601,7 +1598,7 @@ class PKCS11_Token_Management_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-manage", PKCS11_Token_Management_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-manage", PKCS11_Token_Management_Tests);
 
 /***************************** PKCS11 token management *****************************/
 
@@ -1645,7 +1642,7 @@ class PKCS11_X509_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("pkcs11-x509", PKCS11_X509_Tests);
+BOTAN_REGISTER_TEST("pkcs11", "pkcs11-x509", PKCS11_X509_Tests);
 
 #endif
 

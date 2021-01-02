@@ -14,6 +14,7 @@
    #include <botan/x509self.h>
    #include <botan/x509path.h>
    #include <botan/x509_ca.h>
+   #include <botan/x509_ext.h>
    #include <botan/pk_algs.h>
    #include <botan/ber_dec.h>
    #include <botan/der_enc.h>
@@ -1732,7 +1733,7 @@ class X509_Cert_Unit_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("x509_unit", X509_Cert_Unit_Tests);
+BOTAN_REGISTER_TEST("x509", "x509_unit", X509_Cert_Unit_Tests);
 
 #endif
 

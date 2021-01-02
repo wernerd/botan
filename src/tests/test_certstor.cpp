@@ -10,6 +10,7 @@
 #if defined(BOTAN_HAS_X509_CERTIFICATES)
    #include <botan/x509cert.h>
    #include <botan/certstor.h>
+   #include <botan/pkix_types.h>
    #include <botan/internal/filesystem.h>
    #include <botan/pkcs8.h>
    #include <botan/pk_keys.h>
@@ -427,7 +428,7 @@ class Certstor_Tests final : public Test
          }
    };
 
-BOTAN_REGISTER_TEST("certstor", Certstor_Tests);
+BOTAN_REGISTER_TEST("x509", "certstor", Certstor_Tests);
 #endif
 }
 }
