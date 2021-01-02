@@ -1,16 +1,12 @@
 cmake_minimum_required(VERSION 2.8.0)
 project(botan)
 
-# used config command line
-# ./configure.py --with-build-dir=newBuild  --with-cmake --cc=clang --link-method=symlink
-
 if(POLICY CMP0042)
 cmake_policy(SET CMP0042 NEW)
 endif()
 
 set(BOTAN_SOURCES
     "src/lib/asn1/alg_id.cpp"
-    "src/lib/asn1/asn1_attribute.cpp"
     "src/lib/asn1/asn1_obj.cpp"
     "src/lib/asn1/asn1_oid.cpp"
     "src/lib/asn1/asn1_print.cpp"
@@ -196,10 +192,7 @@ set(BOTAN_SOURCES
     "src/lib/modes/aead/ccm/ccm.cpp"
     "src/lib/modes/aead/chacha20poly1305/chacha20poly1305.cpp"
     "src/lib/modes/aead/eax/eax.cpp"
-    "src/lib/modes/aead/gcm/clmul_cpu/clmul_cpu.cpp"
-    "src/lib/modes/aead/gcm/clmul_ssse3/clmul_ssse3.cpp"
     "src/lib/modes/aead/gcm/gcm.cpp"
-    "src/lib/modes/aead/gcm/ghash.cpp"
     "src/lib/modes/aead/ocb/ocb.cpp"
     "src/lib/modes/aead/siv/siv.cpp"
     "src/lib/modes/cbc/cbc.cpp"
@@ -375,6 +368,9 @@ set(BOTAN_SOURCES
     "src/lib/utils/dyn_load/dyn_load.cpp"
     "src/lib/utils/exceptn.cpp"
     "src/lib/utils/filesystem.cpp"
+    "src/lib/utils/ghash/ghash.cpp"
+    "src/lib/utils/ghash/ghash_cpu/ghash_cpu.cpp"
+    "src/lib/utils/ghash/ghash_vperm/ghash_vperm.cpp"
     "src/lib/utils/http_util/http_util.cpp"
     "src/lib/utils/locking_allocator/locking_allocator.cpp"
     "src/lib/utils/mem_ops.cpp"
@@ -407,6 +403,7 @@ set(BOTAN_SOURCES
     "src/lib/x509/ocsp.cpp"
     "src/lib/x509/ocsp_types.cpp"
     "src/lib/x509/pkcs10.cpp"
+    "src/lib/x509/x509_attribute.cpp"
     "src/lib/x509/x509_ca.cpp"
     "src/lib/x509/x509_crl.cpp"
     "src/lib/x509/x509_dn.cpp"
@@ -584,13 +581,13 @@ set_source_files_properties("src/lib/hash/sha2_64/sha2_64_bmi2/sha2_64_bmi2.cpp"
 
 set_source_files_properties("src/lib/hash/sha3/sha3_bmi2/sha3_bmi2.cpp" PROPERTIES COMPILE_FLAGS "-mbmi -mbmi2")
 
-set_source_files_properties("src/lib/modes/aead/gcm/clmul_cpu/clmul_cpu.cpp" PROPERTIES COMPILE_FLAGS "-maes -mpclmul -msse2 -mssse3")
-
-set_source_files_properties("src/lib/modes/aead/gcm/clmul_ssse3/clmul_ssse3.cpp" PROPERTIES COMPILE_FLAGS "-msse2 -mssse3")
-
 set_source_files_properties("src/lib/stream/chacha/chacha_avx2/chacha_avx2.cpp" PROPERTIES COMPILE_FLAGS "-mavx2")
 
 set_source_files_properties("src/lib/stream/chacha/chacha_simd32/chacha_simd32.cpp" PROPERTIES COMPILE_FLAGS "-msse2")
+
+set_source_files_properties("src/lib/utils/ghash/ghash_cpu/ghash_cpu.cpp" PROPERTIES COMPILE_FLAGS "-maes -mpclmul -msse2 -mssse3")
+
+set_source_files_properties("src/lib/utils/ghash/ghash_vperm/ghash_vperm.cpp" PROPERTIES COMPILE_FLAGS "-msse2 -mssse3")
 
 set_source_files_properties("src/tests/test_simd.cpp" PROPERTIES COMPILE_FLAGS "-msse2")
 
