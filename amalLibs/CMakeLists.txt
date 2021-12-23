@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.20.0)
 
 set(LIBRARY_BUILD_TYPE "STATIC")      # or SHARED
 
-if ("${botanLib}" STREQUAL "")
-    set (BotanLib botanstatic)
+if ("${BOTAN_LIB_NAME}" STREQUAL "")
+    set (BOTAN_LIB_NAME botanstatic)
 endif ()
 
 option(ANDROID "Build for Android" OFF)
@@ -82,6 +82,6 @@ set(botan_src
         ${CMAKE_CURRENT_BINARY_DIR}/botan_all.h
         )
 
-add_library(${botanLib} STATIC ${botan_src})
-target_include_directories(${botanLib} PUBLIC
+add_library(${BOTAN_LIB_NAME} STATIC ${botan_src})
+target_include_directories(${BOTAN_LIB_NAME} PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR})
