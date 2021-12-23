@@ -1,8 +1,12 @@
 project(botanlib)
-cmake_minimum_required(VERSION 3.21.0)
+
+cmake_minimum_required(VERSION 3.20.0)
 
 set(LIBRARY_BUILD_TYPE "STATIC")      # or SHARED
-set(botanlib botanstatic)
+
+if ("${botanLib}" STREQUAL "")
+    set (BotanLib botanstatic)
+endif ()
 
 option(ANDROID "Build for Android" OFF)
 option(IOS "Build for iOS" OFF)
@@ -11,7 +15,7 @@ if (ANDROID OR IOS)
     set(EMBEDDED true)
 endif()
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 -D_REENTRANT -g -fstack-protector -pthread")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 -D_REENTRANT -fPIC -g -fstack-protector -pthread")
 
 if ("${BOTAN_MODULES}" STREQUAL "")
     MESSAGE(FATAL "No Botan module defined for amalgamation")
@@ -36,13 +40,13 @@ if (ANDROID)
         set(cpu x86)
         set(target --target=i686-none-linux-android${CMAKE_SYSTEM_VERSION})
     else()
-        MESSAGE(FATAL "Unknown Android architecture: ${ANDROID_ABI}")
+        MESSAGE(FATAL_ERROR "Unknown Android architecture: ${ANDROID_ABI}")
     endif()
 
     set(configCommand ${basicCommand} --os=android --cpu=${cpu} --cc-abi-flags=${target})
 
 elseif(IOS)
-    MESSAGE(FATAL "Not yet implemented")
+    MESSAGE(FATAL_ERROR "Not yet implemented")
 else()
     ## Amalgamation for Host system
     set(configCommand ${basicCommand})
@@ -50,7 +54,7 @@ endif()
 
 set(ENV{CXX} ${CMAKE_CXX_COMPILER})     ## Botan configure.py uses CXX to detect/check compiler
 
-## Run Botan configure to create the amalgamation files, then move them to binary
+## Run Botan configure to create the amalgamation files, then move them to
 ## build directory and remove artifacts
 execute_process(COMMAND ${configCommand}
         WORKING_DIRECTORY ${TOP_DIR}
@@ -78,4 +82,6 @@ set(botan_src
         ${CMAKE_CURRENT_BINARY_DIR}/botan_all.h
         )
 
-add_library(${botanlib} STATIC ${botan_src})
+add_library(${botanLib} STATIC ${botan_src})
+target_include_directories(${botanLib} PUBLIC
+        ${CMAKE_CURRENT_BINARY_DIR})
