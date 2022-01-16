@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.0)
+cmake_minimum_required(VERSION 3.20.0)
 project(botan)
 
 if(POLICY CMP0042)
