@@ -15,7 +15,7 @@ if (ANDROID OR IOS)
     set(EMBEDDED true)
 endif()
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 -D_REENTRANT -fPIC -g -fstack-protector -pthread")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++17 -D_REENTRANT -fPIC -g -fstack-protector -pthread")
 
 if ("${BOTAN_MODULES}" STREQUAL "")
     MESSAGE(FATAL "No Botan module defined for amalgamation")
@@ -46,7 +46,23 @@ if (ANDROID)
     set(configCommand ${basicCommand} --os=android --cpu=${cpu} --cc-abi-flags=${target})
 
 elseif(IOS)
-    MESSAGE(FATAL_ERROR "Not yet implemented")
+    if (CMAKE_OSX_ARCHITECTURES STREQUAL "armv7")
+        set(prefix iphone-32)
+        set(cpu armv7)
+        set(target "-arch armv7")
+    elseif(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+        set(prefix iphone-64)
+        set(cpu arm64)
+        set(target "-arch arm64")
+    elseif(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
+        set(prefix iphone-simulator)
+        set(cpu x86_64)
+        set(target "-arch x86_64")
+    else()
+        message(FATAL_ERROR "Unknown iOS architecture: ${CMAKE_OSX_ARCHITECTURES}. Valid entries: armv7, arm64, x86_64")
+    endif()
+
+    set(configCommand ${basicCommand} --os=ios --prefix=${prefix} --cpu=${cpu} --cc-abi-flags=${target})
 else()
     ## Amalgamation for Host system
     set(configCommand ${basicCommand})
@@ -56,7 +72,7 @@ set(ENV{CXX} ${CMAKE_CXX_COMPILER})     ## Botan configure.py uses CXX to detect
 
 ## Run Botan configure to create the amalgamation files, then move them to
 ## build directory and remove artifacts
-execute_process(COMMAND ${configCommand}
+execute_process(COMMAND python ${configCommand}
         WORKING_DIRECTORY ${TOP_DIR}
         RESULT_VARIABLE result
         OUTPUT_VARIABLE stdOut
@@ -70,12 +86,9 @@ else()
     MESSAGE("##### botan amalgamation - DONE")
 endif()
 
-execute_process(COMMAND mv botan_all.cpp botan_all.h ${CMAKE_CURRENT_BINARY_DIR}
-        WORKING_DIRECTORY ${TOP_DIR}
-        )
-execute_process(COMMAND rm -rf build
-        WORKING_DIRECTORY ${TOP_DIR}
-        )
+file(COPY ${TOP_DIR}/botan_all.cpp ${TOP_DIR}/botan_all.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+file(REMOVE_RECURSE ${TOP_DIR}/build)
 
 set(botan_src
         ${CMAKE_CURRENT_BINARY_DIR}/botan_all.cpp
