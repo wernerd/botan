@@ -25,10 +25,38 @@ def get_concurrency():
     except ImportError:
         return def_concurrency
 
+def known_targets():
+    return [
+        'amalgamation',
+        'baremetal',
+        'bsi',
+        'coverage',
+        'cross-android-arm32',
+        'cross-android-arm64',
+        'cross-arm32',
+        'cross-arm64',
+        'cross-i386',
+        'cross-ios-arm64',
+        'cross-mips64',
+        'cross-ppc32',
+        'cross-ppc64',
+        'cross-win64',
+        'docs',
+        'emscripten',
+        'fuzzers',
+        'lint',
+        'minimized',
+        'nist',
+        'sanitizer',
+        'shared',
+        'static',
+        'valgrind',
+    ]
+
 def build_targets(target, target_os):
     if target in ['shared', 'minimized', 'bsi', 'nist']:
         yield 'shared'
-    elif target in ['static', 'fuzzers', 'baremetal']:
+    elif target in ['static', 'fuzzers', 'baremetal', 'emscripten']:
         yield 'static'
     elif target_os in ['windows']:
         yield 'shared'
@@ -45,7 +73,8 @@ def build_targets(target, target_os):
         yield 'bogo_shim'
 
 def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
-                    ccache, root_dir, pkcs11_lib, use_gdb, disable_werror, extra_cxxflags):
+                    ccache, root_dir, pkcs11_lib, use_gdb, disable_werror, extra_cxxflags,
+                    disabled_tests):
     # pylint: disable=too-many-branches,too-many-statements,too-many-arguments,too-many-locals
 
     """
@@ -70,6 +99,9 @@ def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
 
     if target == 'baremetal':
         target_os = 'none'
+
+    if target == 'emscripten':
+        target_os = 'emscripten'
 
     make_prefix = []
     test_prefix = []
@@ -97,6 +129,9 @@ def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
     if target in ['minimized']:
         flags += ['--minimized-build', '--enable-modules=system_rng,sha2_32,sha2_64,aes']
 
+    if target in ['amalgamation']:
+        flags += ['--amalgamation']
+
     if target in ['bsi', 'nist']:
         # tls is optional for bsi/nist but add it so verify tests work with these minimized configs
         flags += ['--module-policy=%s' % (target), '--enable-modules=tls']
@@ -107,7 +142,7 @@ def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
 
     if target == 'cross-win64':
         # this test compiles under MinGW but fails when run under Wine
-        test_cmd += ['--skip-tests=certstor_system']
+        disabled_tests.append('certstor_system')
 
     if target == 'coverage':
         flags += ['--with-coverage-info', '--with-debug-info', '--test-mode']
@@ -127,7 +162,7 @@ def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
             'pbkdf', 'argon2', 'bcrypt', 'bcrypt_pbkdf', 'compression',
             'ed25519_sign', 'elgamal_keygen', 'x509_path_rsa_pss']
 
-        test_cmd += ['--skip-tests=%s' % (','.join(slow_tests))]
+        disabled_tests += slow_tests
 
     if target == 'fuzzers':
         flags += ['--unsafe-fuzzer-mode']
@@ -149,6 +184,11 @@ def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
     if target == 'baremetal':
         cc_bin = 'arm-none-eabi-c++'
         flags += ['--cpu=arm32', '--disable-neon', '--without-stack-protector', '--ldflags=-specs=nosys.specs']
+        test_cmd = None
+
+    if target == 'emscripten':
+        flags += ['--cpu=wasm']
+        # need to find a way to run the wasm-compiled tests w/o a browser
         test_cmd = None
 
     if is_cross_target:
@@ -249,12 +289,6 @@ def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
         if target_os == 'linux':
             flags += ['--with-lzma']
 
-        if target_os == 'linux':
-            if target not in ['sanitizer', 'valgrind', 'minimized']:
-                # Avoid OpenSSL when using dynamic checkers, or on OS X where it sporadically
-                # is not installed on the CI image
-                flags += ['--with-openssl']
-
         if target in ['coverage']:
             flags += ['--with-tpm']
             test_cmd += ['--run-online-tests']
@@ -270,8 +304,14 @@ def determine_flags(target, target_os, target_cpu, target_cc, cc_bin,
         run_test_command = None
     else:
         if use_gdb:
+            disabled_tests.append("os_utils")
+
+        # render 'disabled_tests' array into test_cmd
+        if disabled_tests:
+            test_cmd += ['--skip-tests=%s' % (','.join(disabled_tests))]
+
+        if use_gdb:
             (cmd, args) = test_cmd[0], test_cmd[1:]
-            args += ['--skip-tests=os_utils']
             run_test_command = test_prefix + ['gdb', cmd,
                                               '-ex', 'run %s' % (' '.join(args)),
                                               '-ex', 'bt',
@@ -337,6 +377,8 @@ def parse_args(args):
 
     parser.add_option('--os', default=default_os(),
                       help='Set the target os (default %default)')
+    parser.add_option('--cpu', default=None,
+                      help='Specify a target CPU platform')
     parser.add_option('--cc', default='gcc',
                       help='Set the target compiler type (default %default)')
     parser.add_option('--cc-bin', default=None,
@@ -350,18 +392,8 @@ def parse_args(args):
     parser.add_option('--extra-cxxflags', metavar='FLAGS', default=[], action='append',
                       help='Specify extra build flags')
 
-    parser.add_option('--cpu', default=None,
-                      help='Specify a target CPU platform')
-
-    parser.add_option('--with-debug', action='store_true', default=False,
-                      help='Include debug information')
-    parser.add_option('--amalgamation', action='store_true', default=False,
-                      help='Build via amalgamation')
-    parser.add_option('--disable-shared', action='store_true', default=False,
-                      help='Disable building shared libraries')
-
-    parser.add_option('--branch', metavar='B', default=None,
-                      help='Specify branch being built')
+    parser.add_option('--disabled-tests', metavar='DISABLED_TESTS', default=[], action='append',
+                      help='Comma separated list of tests that should not be run')
 
     parser.add_option('--dry-run', action='store_true', default=False,
                       help='Just show commands to be executed')
@@ -414,6 +446,7 @@ def main(args=None):
 
     if args is None:
         args = sys.argv
+
     print("Invoked as '%s'" % (' '.join(args)))
     (options, args) = parse_args(args)
 
@@ -422,6 +455,10 @@ def main(args=None):
         return 1
 
     target = args[1]
+
+    if target not in known_targets():
+        print("Unknown target '%s'" % (target))
+        return 2
 
     if options.use_python3 is None:
         use_python3 = have_prog('python3')
@@ -439,6 +476,8 @@ def main(args=None):
             options.cc_bin = 'clang++'
         elif options.cc == 'msvc':
             options.cc_bin = 'cl'
+        elif options.cc == "emcc":
+            options.cc_bin = "em++"
         else:
             print('Error unknown compiler %s' % (options.cc))
             return 1
@@ -495,7 +534,7 @@ def main(args=None):
             target, options.os, options.cpu, options.cc,
             options.cc_bin, options.compiler_cache, root_dir,
             options.pkcs11_lib, options.use_gdb, options.disable_werror,
-            options.extra_cxxflags)
+            options.extra_cxxflags, options.disabled_tests)
 
         cmds.append([py_interp, os.path.join(root_dir, 'configure.py')] + config_flags)
 
@@ -504,6 +543,7 @@ def main(args=None):
             make_cmd += ['-C', root_dir]
         if options.build_jobs > 1 and options.make_tool != 'nmake':
             make_cmd += ['-j%d' % (options.build_jobs)]
+
         make_cmd += ['-k']
 
         if target == 'docs':

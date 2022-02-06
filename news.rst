@@ -70,6 +70,8 @@ Version 3.0.0, Not Yet Released
 
 * Add new ``X509_DN::DER_encode`` function. (GH #2472)
 
+* Add support for ``zfec`` compatible forward error correction (GH #2866 #2871)
+
 * Add support for keyed BLAKE2b (GH #2524)
 
 * Optimizations for SHACAL2, especially improving ARMv8 and POWER (GH #2556 #2557)
@@ -135,6 +137,47 @@ Version 3.0.0, Not Yet Released
   there.
 
 * Generate a ``compile_commands.json`` for use with Clang tooling.
+
+Version 2.19.0, 2022-01-19
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Add a forward error correction code compatible with the
+  zfec library (GH #2868 #2866)
+
+* Improve Emscripten build (GH #2864)
+
+* Always use ``-L`` before build flags (GH #2858 2848)
+
+* Fix compilation issue on earlier macOS versions (GH #2851)
+
+* Add a GCC 4.8 CI target to prevent build regressions (GH #2869)
+
+* Add support for Loongarch64 (GH #2877)
+
+* Check OSXSAVE flag before using AVX2 instructions (GH #2878)
+
+Version 2.18.2, 2021-10-25
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Avoid using short exponents when encrypting in ElGamal, as some PGP
+  implementations generate keys with parameters that are weak when
+  short exponents are used (GH #2794)
+
+* Fix a low risk OAEP decryption side channel (GH #2797)
+
+* Work around a miscompilation of SHA-3 caused by a bug in Clang 12
+  and XCode 13. (GH #2826)
+
+* Remove support in OpenSSL provider for algorithms which are
+  disabled by default in OpenSSL 3.0 (GH #2823, #2814)
+
+* Add CI based on GitHub actions to replace Travis CI (GH #2632)
+
+* Fix the online OCSP test, as the certificate involved had expired.
+  (GH #2799)
+
+* Fix some test failures induced by the expiration of the trust root
+  "DST Root CA X3" (GH #2820)
 
 Version 2.18.1, 2021-05-09
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

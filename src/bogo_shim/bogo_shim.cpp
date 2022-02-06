@@ -101,7 +101,7 @@ std::string map_to_bogo_error(const std::string& e)
          { "Client policy prohibits insecure renegotiation", ":RENEGOTIATION_MISMATCH:" },
          { "Client policy prohibits renegotiation", ":NO_RENEGOTIATION:" },
          { "Client resumed extended ms session without sending extension", ":RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION:" },
-         { "Client sent HTTP proxy CONNECT request instead of TLS handshake", ":HTTPS_PROXY_REQUEST:" },
+         { "Client sent plaintext HTTP proxy CONNECT request instead of TLS handshake", ":HTTPS_PROXY_REQUEST:" },
          { "Client sent plaintext HTTP request instead of TLS handshake", ":HTTP_REQUEST:" },
          { "Client signalled fallback SCSV, possible attack", ":INAPPROPRIATE_FALLBACK:" },
          { "Client version DTLS v1.0 is unacceptable by policy", ":UNSUPPORTED_PROTOCOL:" },
@@ -175,7 +175,8 @@ std::string map_to_bogo_error(const std::string& e)
          { "Simulating cert verify callback failure", ":CERT_CB_ERROR:" },
          { "Simulating failure from OCSP response callback", ":OCSP_CB_ERROR:" },
          { "TLS plaintext record is larger than allowed maximum", ":DATA_LENGTH_TOO_LONG:" },
-         { "TLS record version has unexpected value", ":WRONG_VERSION_NUMBER:" },
+         { "TLS record type had unexpected value", ":UNEXPECTED_RECORD:" },
+         { "TLS record version had unexpected value", ":WRONG_VERSION_NUMBER:" },
          { "TLS signature extension did not allow for RSA/SHA-256 signature", ":WRONG_SIGNATURE_TYPE:", },
          { "Test requires rejecting cert", ":CERTIFICATE_VERIFY_FAILED:" },
          { "Unexpected ALPN protocol", ":INVALID_ALPN_PROTOCOL:" },
@@ -1054,9 +1055,9 @@ std::vector<uint16_t> Shim_Policy::ciphersuite_list(Botan::TLS::Protocol_Version
       for(auto suite_name : suites)
          {
          const auto suite = Botan::TLS::Ciphersuite::from_name(suite_name);
-         if(suite.valid() == false)
+         if(!suite || !suite->valid())
             shim_exit_with_error("Bad ciphersuite name " + suite_name);
-         ciphersuite_codes.push_back(suite.ciphersuite_code());
+         ciphersuite_codes.push_back(suite->ciphersuite_code());
          }
       }
    else

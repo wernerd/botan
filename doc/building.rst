@@ -7,6 +7,12 @@ This document describes how to build Botan on Unix/POSIX and Windows
 systems. The POSIX oriented descriptions should apply to most common Unix
 systems (including Apple macOS/Darwin), along with POSIX-ish systems like QNX.
 
+.. note::
+   Botan is available already in nearly all
+   `packaging systems <https://repology.org/project/botan/versions>`_ so you
+   probably only need to build from source if you need unusual options
+   or are building for an old system which has out of date packages.
+
 Currently systems such as VMS, OS/390, and OS/400 are not supported by the build
 system, primarily due to lack of access and interest.  Please contact the
 maintainer if you would like to build Botan on such a system.
@@ -36,7 +42,7 @@ Configuring the Build
 The first step is to run ``configure.py``, which is a Python script
 that creates various directories, config files, and a Makefile for
 building everything. This script should run under a vanilla install of
-Python 2.6, 2.7, or 3.x.
+Python 2.7 or Python 3.x.
 
 The script will attempt to guess what kind of system you are trying to
 compile for (and will print messages telling you what it guessed).
@@ -52,7 +58,7 @@ kernel on a 64-bit CPU will generally not like 64-bit code.
 
 By default the script tries to figure out what will work on your
 system, and use that. It will print a display at the end showing which
-algorithms have and have not been enabled. For instance on one system
+modules have and have not been enabled. For instance on one system
 we might see lines like::
 
    INFO: Skipping (dependency failure): certstor_sqlite3 sessions_sqlite3
@@ -60,7 +66,7 @@ we might see lines like::
    INFO: Skipping (incompatible OS): darwin_secrandom getentropy win32_stats
    INFO: Skipping (incompatible compiler): aes_armv8 pmull sha1_armv8 sha2_32_armv8
    INFO: Skipping (no enabled compression schemes): compression
-   INFO: Skipping (requires external dependency): boost bzip2 lzma openssl sqlite3 tpm zlib
+   INFO: Skipping (requires external dependency): boost bzip2 lzma sqlite3 tpm zlib
 
 The ones that are skipped because they are require an external
 dependency have to be explicitly asked for, because they rely on third
@@ -119,7 +125,7 @@ On Unix
 
 The basic build procedure on Unix and Unix-like systems is::
 
-   $ ./configure.py [--enable-modules=<list>] [--cc=CC]
+   $ ./configure.py [various options]
    $ make
    $ make check
 
@@ -128,8 +134,7 @@ If the tests look OK, install::
    $ make install
 
 On Unix systems the script will default to using GCC; use ``--cc`` if
-you want something else. For instance use ``--cc=icc`` for Intel C++
-and ``--cc=clang`` for Clang.
+you want something else. For instance use ``--cc=clang`` for Clang.
 
 The ``make install`` target has a default directory in which it will
 install Botan (typically ``/usr/local``). You can override this by
@@ -149,10 +154,17 @@ On macOS
 
 A build on macOS works much like that on any other Unix-like system.
 
-To build a universal binary for macOS, you need to set some additional
-build flags. Do this with the `configure.py` flag `--cc-abi-flags`::
+To build a universal binary for macOS, for older macOs releases, 
+you need to set some additional build flags. 
+Do this with the `configure.py` flag `--cc-abi-flags`::
 
   --cc-abi-flags="-force_cpusubtype_ALL -mmacosx-version-min=10.4 -arch i386 -arch ppc"
+
+
+for mac M1 on arm64, you can build the x86_64 arch version via Rosetta separately.
+Do this with with `arch -x86_64 configure.py --library-suffix=-x86_64`
+Then using lipo to create a fat binary.
+`lipo -create libbotan-arm64.dylib libbotan-x86_64.dylib -o libbotan.dylib`
 
 On Windows
 --------------
@@ -260,16 +272,12 @@ Emscripten (WebAssembly)
 
 To build for WebAssembly using Emscripten, try::
 
-  CXX=em++ ./configure.py --cc=clang --cpu=llvm --os=emscripten
+  ./configure.py --cpu=wasm --os=emscripten
   make
 
-This will produce bitcode files ``botan-test.bc`` and ``botan.bc``
-along with a static archive ``libbotan-2.a`` which can linked with
-other modules.  To convert the tests into a WASM file which can be
-executed on a browser, use::
-
-  em++ -s ALLOW_MEMORY_GROWTH=1 -s DISABLE_EXCEPTION_CATCHING=0 -s WASM=1 \
-     --preload-file src/tests/data botan-test.bc -o botan-test.html
+This will produce HTML files ``botan-test.html`` and ``botan.html``
+along with a static archive ``libbotan-3.a`` which can be linked with
+other modules.
 
 Supporting Older Distros
 --------------------------
@@ -355,10 +363,6 @@ by the user using
 
  - ``--with-sqlite3`` enables using sqlite3 databases in various contexts
    (TLS session cache, PSK database, etc).
-
- - ``--with-openssl`` adds an engine that uses OpenSSL for some ciphers, hashes,
-   and public key operations. OpenSSL 1.0.2 or later is supported. LibreSSL can
-   also be used.
 
  - ``--with-tpm`` adds support for using TPM hardware via the TrouSerS library.
 
@@ -959,11 +963,6 @@ Enable lzma compression
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Enable using zlib compression
-
-``--with-openssl``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Enable using OpenSSL for certain operations
 
 ``--with-commoncrypto``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

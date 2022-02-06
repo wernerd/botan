@@ -563,7 +563,7 @@ def process_command_line(args): # pylint: disable=too-many-locals,too-many-state
                           help='minimize build')
 
     # Should be derived from info.txt but this runs too early
-    third_party = ['boost', 'bzip2', 'lzma', 'openssl', 'commoncrypto', 'sqlite3', 'zlib', 'tpm']
+    third_party = ['boost', 'bzip2', 'lzma', 'commoncrypto', 'sqlite3', 'zlib', 'tpm']
 
     for mod in third_party:
         mods_group.add_option('--with-%s' % (mod),
@@ -1166,6 +1166,7 @@ class CompilerInfo(InfoObject): # pylint: disable=too-many-instance-attributes
                 'stack_protector_flags': '',
                 'shared_flags': '',
                 'lang_flags': '',
+                'lang_binary_linker_flags': '',
                 'warning_flags': '',
                 'maintainer_warning_flags': '',
                 'visibility_build_flags': '',
@@ -1194,6 +1195,7 @@ class CompilerInfo(InfoObject): # pylint: disable=too-many-instance-attributes
         self.debug_info_flags = lex.debug_info_flags
         self.isa_flags = lex.isa_flags
         self.lang_flags = lex.lang_flags
+        self.lang_binary_linker_flags = lex.lang_binary_linker_flags
         self.lib_flags = lex.lib_flags
         self.linker_name = lex.linker_name
         self.mach_abi_linking = lex.mach_abi_linking
@@ -1388,6 +1390,9 @@ class CompilerInfo(InfoObject): # pylint: disable=too-many-instance-attributes
 
     def cc_lang_flags(self):
         return self.lang_flags
+
+    def cc_lang_binary_linker_flags(self):
+        return self.lang_binary_linker_flags
 
     def cc_compile_flags(self, options, with_debug_info=None, enable_optimizations=None):
         #pylint: disable=too-many-branches
@@ -2148,10 +2153,12 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
         'dash_c': cc.compile_flags,
 
         'cc_lang_flags': cc.cc_lang_flags(),
+        'cc_lang_binary_linker_flags': cc.cc_lang_binary_linker_flags(),
         'os_feature_macros': osinfo.macros(cc),
         'cc_sysroot': sysroot_option(),
         'cc_compile_flags': options.cxxflags or cc.cc_compile_flags(options),
         'ldflags': options.ldflags or '',
+        'test_exe_extra_ldflags': '--preload-file=%s' % source_paths.test_data_dir if osinfo.matches_name("emscripten") else '',
         'extra_libs': extra_libs(options.extra_libs, cc),
         'cc_warning_flags': cc.cc_warning_flags(options),
         'output_to_exe': cc.output_to_exe,
@@ -2247,10 +2254,11 @@ def create_template_vars(source_paths, build_paths, options, modules, cc, arch, 
 
     if options.os == 'llvm' or options.compiler == 'msvc':
         # llvm-link and msvc require just naming the file directly
+        variables['build_dir_link_path'] = ''
         variables['link_to_botan'] = os.path.join(build_dir, variables['static_lib_name'])
     else:
-        variables['link_to_botan'] = '%s%s %s' % (cc.add_lib_dir_option, build_dir,
-                                                  (cc.add_lib_option % variables['libname']))
+        variables['build_dir_link_path'] = '%s%s' % (cc.add_lib_dir_option, build_dir)
+        variables['link_to_botan'] = cc.add_lib_option % variables['libname']
 
     return variables
 
@@ -3074,15 +3082,25 @@ def validate_options(options, info_os, info_cc, available_module_policies):
     if options.module_policy and options.module_policy not in available_module_policies:
         raise UserError("Unknown module set %s" % options.module_policy)
 
-    if options.cpu == 'llvm' or options.os in ['llvm', 'emscripten']:
+    if options.cpu == 'llvm' or options.os == 'llvm':
         if options.compiler != 'clang':
             raise UserError('LLVM target requires using Clang')
 
         if options.cpu != 'llvm':
             raise UserError('LLVM target requires CPU target set to LLVM bitcode (llvm)')
 
-        if options.os not in ['llvm', 'emscripten']:
+        if options.os != 'llvm':
             raise UserError('Target OS is not an LLVM bitcode target')
+
+    if options.cpu == 'wasm' or options.os == 'emscripten':
+        if options.compiler != 'emcc':
+            raise UserError('Emscripten target requires using emcc')
+
+        if options.cpu != 'wasm':
+            raise UserError('Emscripten target requires CPU target set to LLVM bitcode (wasm)')
+
+        if options.os != 'emscripten':
+            raise UserError('Target OS is not emscripten')
 
     if options.build_fuzzers is not None:
         if options.build_fuzzers not in ['libfuzzer', 'afl', 'klee', 'test']:
@@ -3150,6 +3168,7 @@ def calculate_cc_min_version(options, ccinfo, source_paths):
         'gcc': r'^ *GCC ([0-9]+) ([0-9]+)$',
         'clang': r'^ *CLANG ([0-9]+) ([0-9]+)$',
         'xlc': r'^ *XLC ([0-9]+) ([0-9]+)$',
+        'emcc': r'^ *EMCC ([0-9]+) ([0-9]+)$',
     }
 
     unknown_pattern = r'UNKNOWN 0 0'
