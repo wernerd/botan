@@ -188,6 +188,9 @@ set(BOTAN_SOURCES
     "src/lib/misc/roughtime/roughtime.cpp"
     "src/lib/misc/srp6/srp6.cpp"
     "src/lib/misc/tss/tss.cpp"
+    "src/lib/misc/zfec/zfec.cpp"
+    "src/lib/misc/zfec/zfec_sse2/zfec_sse2.cpp"
+    "src/lib/misc/zfec/zfec_vperm/zfec_vperm.cpp"
     "src/lib/modes/aead/aead.cpp"
     "src/lib/modes/aead/ccm/ccm.cpp"
     "src/lib/modes/aead/chacha20poly1305/chacha20poly1305.cpp"
@@ -448,6 +451,7 @@ set(BOTAN_CLI
     "src/cli/tss.cpp"
     "src/cli/utils.cpp"
     "src/cli/x509.cpp"
+    "src/cli/zfec.cpp"
 
 )
 
@@ -478,7 +482,7 @@ set(BOTAN_TESTS
     "src/tests/test_ecies.cpp"
     "src/tests/test_eckcdsa.cpp"
     "src/tests/test_ed25519.cpp"
-    "src/tests/test_elg.cpp"
+    "src/tests/test_elgamal.cpp"
     "src/tests/test_entropy.cpp"
     "src/tests/test_ffi.cpp"
     "src/tests/test_filters.cpp"
@@ -536,6 +540,7 @@ set(BOTAN_TESTS
     "src/tests/test_x509_dn.cpp"
     "src/tests/test_x509_path.cpp"
     "src/tests/test_xmss.cpp"
+    "src/tests/test_zfec.cpp"
     "src/tests/tests.cpp"
     "src/tests/unit_asio_stream.cpp"
     "src/tests/unit_ecc.cpp"
@@ -580,6 +585,10 @@ set_source_files_properties("src/lib/hash/sha2_32/sha2_32_x86/sha2_32_x86.cpp" P
 set_source_files_properties("src/lib/hash/sha2_64/sha2_64_bmi2/sha2_64_bmi2.cpp" PROPERTIES COMPILE_FLAGS "-mbmi -mbmi2")
 
 set_source_files_properties("src/lib/hash/sha3/sha3_bmi2/sha3_bmi2.cpp" PROPERTIES COMPILE_FLAGS "-mbmi -mbmi2")
+
+set_source_files_properties("src/lib/misc/zfec/zfec_sse2/zfec_sse2.cpp" PROPERTIES COMPILE_FLAGS "-msse2")
+
+set_source_files_properties("src/lib/misc/zfec/zfec_vperm/zfec_vperm.cpp" PROPERTIES COMPILE_FLAGS "-msse2 -mssse3")
 
 set_source_files_properties("src/lib/stream/chacha/chacha_avx2/chacha_avx2.cpp" PROPERTIES COMPILE_FLAGS "-mavx2")
 
