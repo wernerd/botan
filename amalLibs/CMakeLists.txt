@@ -1,3 +1,27 @@
+#
+# Copyright 2022, Werner Dittmann
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# This is a smale helper CMakeLists.txt file which creates a small lib which
+# includes a well defined set of Botan modules. The calling CMakeLists.txt
+# defines the required modules in variable BOTAN_MODULES (or as -D argument)
+#
+# A top level CMakeLists.txt usually uses this helper after it fetched this
+# forked Botan repository (see cmake's FETCH_CONTENT mechanism). This file
+# checks some Android, iOS or other arguments, sets the correct flags to
+# compile Botan for the target platform, compiles and bilds the library.
 project(botanlib)
 
 cmake_minimum_required(VERSION 3.20.0)
