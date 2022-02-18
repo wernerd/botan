@@ -96,7 +96,7 @@ set(ENV{CXX} ${CMAKE_CXX_COMPILER})     ## Botan configure.py uses CXX to detect
 
 ## Run Botan configure to create the amalgamation files, then move them to
 ## build directory and remove artifacts
-execute_process(COMMAND python ${configCommand}
+execute_process(COMMAND python3 ${configCommand}
         WORKING_DIRECTORY ${TOP_DIR}
         RESULT_VARIABLE result
         OUTPUT_VARIABLE stdOut
