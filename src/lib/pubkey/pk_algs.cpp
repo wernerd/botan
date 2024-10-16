@@ -98,8 +98,12 @@
    #include <botan/sm2.h>
 #endif
 
-#if defined(BOTAN_HAS_DILITHIUM) || defined(BOTAN_HAS_DILITHIUM_AES) || defined(BOTAN_HAS_ML_DSA)
+#if defined(BOTAN_HAS_DILITHIUM) || defined(BOTAN_HAS_DILITHIUM_AES)
    #include <botan/dilithium.h>
+#endif
+
+#if defined(BOTAN_HAS_ML_DSA)
+   #include <botan/ml_dsa.h>
 #endif
 
 #if defined(BOTAN_HAS_SPHINCS_PLUS_COMMON)
@@ -228,9 +232,15 @@ std::unique_ptr<Public_Key> load_public_key(const AlgorithmIdentifier& alg_id,
    }
 #endif
 
-#if defined(BOTAN_HAS_DILITHIUM) || defined(BOTAN_HAS_DILITHIUM_AES) || defined(BOTAN_HAS_ML_DSA)
-   if(alg_name == "Dilithium" || alg_name.starts_with("Dilithium-") || alg_name.starts_with("ML-DSA-")) {
+#if defined(BOTAN_HAS_DILITHIUM) || defined(BOTAN_HAS_DILITHIUM_AES)
+   if(alg_name == "Dilithium" || alg_name.starts_with("Dilithium-")) {
       return std::make_unique<Dilithium_PublicKey>(alg_id, key_bits);
+   }
+#endif
+
+#if defined(BOTAN_HAS_ML_DSA)
+   if(alg_name.starts_with("ML-DSA-")) {
+      return std::make_unique<ML_DSA_PublicKey>(alg_id, key_bits);
    }
 #endif
 
@@ -370,9 +380,15 @@ std::unique_ptr<Private_Key> load_private_key(const AlgorithmIdentifier& alg_id,
    }
 #endif
 
-#if defined(BOTAN_HAS_DILITHIUM) || defined(BOTAN_HAS_DILITHIUM_AES) || defined(BOTAN_HAS_ML_DSA)
-   if(alg_name == "Dilithium" || alg_name.starts_with("Dilithium-") || alg_name.starts_with("ML-DSA-")) {
+#if defined(BOTAN_HAS_DILITHIUM) || defined(BOTAN_HAS_DILITHIUM_AES)
+   if(alg_name == "Dilithium" || alg_name.starts_with("Dilithium-")) {
       return std::make_unique<Dilithium_PrivateKey>(alg_id, key_bits);
+   }
+#endif
+
+#if defined(BOTAN_HAS_ML_DSA)
+   if(alg_name.starts_with("ML-DSA-")) {
+      return std::make_unique<ML_DSA_PrivateKey>(alg_id, key_bits);
    }
 #endif
 
@@ -534,14 +550,14 @@ std::unique_ptr<Private_Key> create_private_key(std::string_view alg_name,
 
 #if defined(BOTAN_HAS_ML_DSA)
    if(alg_name == "ML-DSA") {
-      const auto mode = [&]() -> DilithiumMode {
+      const auto mode = [&]() -> ML_DSA_Mode {
          if(params.empty()) {
-            return DilithiumMode::ML_DSA_6x5;
+            return ML_DSA_Mode::ML_DSA_6x5;
          }
-         return DilithiumMode(params);
+         return ML_DSA_Mode(params);
       }();
 
-      return std::make_unique<Dilithium_PrivateKey>(rng, mode);
+      return std::make_unique<ML_DSA_PrivateKey>(rng, mode);
    }
 #endif
 
