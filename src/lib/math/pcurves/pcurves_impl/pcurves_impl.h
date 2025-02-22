@@ -846,6 +846,9 @@ class AffineCurvePoint final {
 
       static constexpr Self identity() { return Self(FieldElement::zero(), FieldElement::zero()); }
 
+      // Helper for ct_select of pcurves_generic
+      static constexpr Self identity(const Self&) { return Self(FieldElement::zero(), FieldElement::zero()); }
+
       constexpr CT::Choice is_identity() const { return x().is_zero() && y().is_zero(); }
 
       AffineCurvePoint(const Self& other) = default;
@@ -873,7 +876,7 @@ class AffineCurvePoint final {
       * Returns the identity element also if idx is out of range
       */
       static constexpr auto ct_select(std::span<const Self> pts, size_t idx) {
-         auto result = Self::identity();
+         auto result = Self::identity(pts[0]);
 
          // Intentionally wrapping; set to maximum size_t if idx == 0
          const size_t idx1 = static_cast<size_t>(idx - 1);
@@ -1471,10 +1474,10 @@ class WindowedBoothMulTable final {
             const auto [tidx, tneg] = booth_recode<WindowBits>(w_i);
 
             if(i == 0) {
-               accum = ProjectivePoint::from_affine(AffinePoint::ct_select(m_table, tidx));
+               accum = ProjectivePoint::from_affine(m_table.ct_select(tidx));
                accum.conditional_assign(tneg, accum.negate());
             } else {
-               accum = ProjectivePoint::add_or_sub(accum, AffinePoint::ct_select(m_table, tidx), tneg);
+               accum = ProjectivePoint::add_or_sub(accum, m_table.ct_select(tidx), tneg);
             }
 
             accum = accum.dbl_n(WindowBits);
@@ -1487,7 +1490,7 @@ class WindowedBoothMulTable final {
          // final window (note one bit shorter than previous reads)
          const size_t w_l = bits.get_window(0) & ((1 << WindowBits) - 1);
          const auto [tidx, tneg] = booth_recode<WindowBits>(w_l << 1);
-         accum = ProjectivePoint::add_or_sub(accum, AffinePoint::ct_select(m_table, tidx), tneg);
+         accum = ProjectivePoint::add_or_sub(accum, m_table.ct_select(tidx), tneg);
 
          CT::unpoison(accum);
          return accum;
@@ -1506,7 +1509,7 @@ class WindowedBoothMulTable final {
          return std::make_pair(static_cast<size_t>(d), s_mask.as_choice());
       }
 
-      std::vector<AffinePoint> m_table;
+      AffinePointTable<C> m_table;
 };
 
 template <typename C, size_t W>
